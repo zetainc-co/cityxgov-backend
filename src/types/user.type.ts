@@ -4,7 +4,8 @@ export interface User {
   last_name: string;
   phone: string;
   email: string;
-  role: string[];
+  roles: string[];
+  avatar: string;
   token: string;
   created_at: string;
   is_active: boolean;
@@ -17,6 +18,7 @@ export class NewUser {
   phone: string;
   email: string;
   roles?: string[];
+  avatar?: string;
 }
 
 export interface UserResponse {
@@ -25,8 +27,17 @@ export interface UserResponse {
   last_name: string;
   phone: string;
   email: string;
-  role: string[];
+  roles: string[];
+  avatar: string;
   is_active: boolean;
+}
+
+export interface UpdateUser {
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  roles?: string[];
+  avatar?: string;
 }
 
 export interface CreateUserResponse {
@@ -38,4 +49,8 @@ export interface CreateUserResponse {
 
 export interface CreateUserRequest {
   user: NewUser;
+}
+
+export interface UpdateUserRequest {
+  user: UpdateUser;
 }

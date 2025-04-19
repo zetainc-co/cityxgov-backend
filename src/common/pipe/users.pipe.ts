@@ -7,7 +7,7 @@ import {
 
 @Injectable()
 export class ValidateUserPipe implements PipeTransform {
-  transform(value: any, metadata: ArgumentMetadata) {
+  transform(value: any, ) {
     const missingFields = this.getMissingFields(value);
     if (missingFields.length > 0) {
       throw new BadRequestException(
@@ -30,6 +30,7 @@ export class ValidateUserPipe implements PipeTransform {
       'phone',
       'email',
       'roles',
+      'avatar',
     ];
 
     requiredFields.forEach((field) => {

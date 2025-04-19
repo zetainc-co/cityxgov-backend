@@ -19,13 +19,11 @@ export class AuthService {
 
   async validateUser(email: string, password: string) {
     // Buscar usuario por email
-    const { data: user, error } = await this.supabaseService.client
-      .from('users_profile')
+    const { data: user, error } = await this.supabaseService.clientAdmin
+      .from('profile')
       .select('*')
       .eq('email', email)
       .single();
-
-    console.log('user', user);
 
     if (error || !user) {
       throw new UnauthorizedException('Credenciales incorrectas');
@@ -45,13 +43,13 @@ export class AuthService {
     const user = await this.validateUser(loginDto.email, loginDto.password);
 
     const token = jwt.sign(
-      { id: user.identification, role: user.role },
+      { id: user.identification, roles: user.roles },
       process.env.JWT_SECRET as string,
       { expiresIn: '24h' },
     );
 
-    await this.supabaseService.client
-      .from('users_profile')
+    await this.supabaseService.clientAdmin
+      .from('profile')
       .update({ token })
       .eq('email', user.email);
 
@@ -63,7 +61,6 @@ export class AuthService {
           email: user.email,
           first_name: user.first_name,
           last_name: user.last_name,
-          role: user.role,
           identification: user.identification,
           phone: user.phone,
         },
@@ -73,8 +70,8 @@ export class AuthService {
   }
 
   async logout(userId: number): Promise<{ message: string }> {
-    const { error } = await this.supabaseService.client
-      .from('users_profile')
+    const { error } = await this.supabaseService.clientAdmin
+      .from('profile')
       .update({ token: null })
       .eq('identification', userId);
 
@@ -88,8 +85,8 @@ export class AuthService {
   }
 
   async passwordRecovery(email: string): Promise<{ message: string }> {
-    const { data, error } = await this.supabaseService.client
-      .from('users_profile')
+    const { data, error } = await this.supabaseService.clientAdmin
+      .from('profile')
       .select('identification, email, first_name, last_name')
       .eq('email', email)
       .single();
@@ -104,8 +101,8 @@ export class AuthService {
     otpExpired.setMinutes(otpExpired.getMinutes() + 5);
 
     // Actualizar en la base de datos
-    const { error: updateError } = await this.supabaseService.client
-      .from('users_profile')
+    const { error: updateError } = await this.supabaseService.clientAdmin
+      .from('profile')
       .update({
         otp: otp,
         otp_expired: otpExpired.toISOString(),
@@ -129,9 +126,9 @@ export class AuthService {
   }
 
   async validateOtp(email: string, otp: string) {
-    const { data: user, error } = await this.supabaseService.client
-      .from('users_profile')
-      .select('identification, email, role, otp, otp_expired')
+    const { data: user, error } = await this.supabaseService.clientAdmin
+      .from('profile')
+      .select('identification, email, roles, otp, otp_expired')
       .eq('email', email)
       .single();
 
@@ -154,8 +151,8 @@ export class AuthService {
       );
     }
 
-    const { error: updateError } = await this.supabaseService.client
-      .from('users_profile')
+    const { error: updateError } = await this.supabaseService.clientAdmin
+      .from('profile')
       .update({
         otp: null,
         otp_expired: null,
@@ -170,7 +167,7 @@ export class AuthService {
       {
         id: user.identification,
         email: user.email,
-        role: user.role,
+        roles: user.roles,
         type: 'password_reset',
       },
       process.env.JWT_SECRET as string,
@@ -243,8 +240,8 @@ export class AuthService {
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      const { data: user, error } = await this.supabaseService.client
-        .from('users_profile')
+      const { data: user, error } = await this.supabaseService.clientAdmin
+        .from('profile')
         .update({
           password: hashedPassword,
           token: null,
@@ -291,8 +288,8 @@ export class AuthService {
     try {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      const { error: updateError } = await this.supabaseService.client
-        .from('users_profile')
+      const { error: updateError } = await this.supabaseService.clientAdmin
+        .from('profile')
         .update({ password: hashedPassword })
         .eq('identification', userId);
 
