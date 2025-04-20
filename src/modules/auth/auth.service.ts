@@ -28,11 +28,18 @@ export class AuthService {
     if (error || !user) {
       throw new UnauthorizedException({
         status: false,
-        message: 'Credenciales incorrectas',
+        message: 'No existe un usuario con el correo electrónico proporcionado',
         data: [],
       });
     }
 
+    if (!user.is_active) {
+      throw new UnauthorizedException({
+        status: false,
+        message: 'Su cuenta se encuentra inactiva, por favor contacte al administrador',
+        data: [],
+      });
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -72,6 +79,7 @@ export class AuthService {
           identification: user.identification,
           phone: user.phone,
           roles: user.roles,
+          avatar: user.avatar,
         },
         token,
       },

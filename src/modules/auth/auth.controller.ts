@@ -28,7 +28,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  @Roles('admin', 'superadmin', 'assistant')
+  @Roles('admin', 'superadmin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async logout(@Req() req) {
     return this.authService.logout(req.user.userId);
