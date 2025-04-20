@@ -48,9 +48,11 @@ export class UsersService {
       .single();
 
     if (!data) {
-      throw new NotFoundException(
-        `Usuario con identificación ${identification} no encontrado`,
-      );
+      throw new NotFoundException({
+        status: false,
+        message: `Usuario con identificación ${identification} no encontrado`,
+        data: [],
+      });
     }
 
     if (error) throw error;
@@ -79,7 +81,6 @@ export class UsersService {
           roles: user.roles,
         },
       });
-      
 
       const user_profile = {
         identification: res.data.user?.user_metadata.identification,
@@ -99,11 +100,14 @@ export class UsersService {
           throw new ConflictException({
             status: false,
             message: 'El correo electrónico ya está registrado en el sistema.',
-            error: 'EMAIL_EXISTS',
-            statusCode: 422,
+            data: [],
           });
         }
-        throw new ConflictException(res.error);
+        throw new ConflictException({
+          status: false,
+          message: res.error,
+          data: [],
+        });
       }
 
       const { data: userData, error: userProfileError } =
@@ -116,23 +120,33 @@ export class UsersService {
       if (userProfileError) {
         if (userProfileError.code === '23505') {
           if (userProfileError.message.includes('phone')) {
-            throw new ConflictException(
-              'El número de teléfono ya está registrado',
-            );
+            throw new ConflictException({
+              status: false,
+              message: 'El número de teléfono ya está registrado',
+              data: [],
+            });
           } else if (userProfileError.message.includes('email')) {
-            throw new ConflictException(
-              'El correo electrónico ya está registrado',
-            );
+            throw new ConflictException({
+              status: false,
+              message: 'El correo electrónico ya está registrado',
+              data: [],
+            });
           } else if (
             userProfileError.message.includes('identification') ||
             userProfileError.details?.includes('identification')
           ) {
-            throw new ConflictException(
-              'El número de identificación ya está registrado',
-            );
+            throw new ConflictException({
+              status: false,
+              message: 'El número de identificación ya está registrado',
+              data: [],
+            });
           }
         }
-        throw new ConflictException(userProfileError);
+        throw new ConflictException({
+          status: false,
+          message: userProfileError,
+          data: [],
+        });
       }
 
       return {
@@ -160,61 +174,44 @@ export class UsersService {
   }
 
   async updateUser(
-    identification: number,
     updateUserRequest: UpdateUserRequest,
     user: any,
   ): Promise<CreateUserResponse> {
-    
-
-    const userToUpdate = await this.findOne(identification);
+    const userToUpdate = await this.findOne(user.userId);
 
     if (!userToUpdate) {
-      throw new NotFoundException(
-        `Usuario con identificación ${identification} no encontrado`,
-      );
+      throw new NotFoundException({
+        status: false,
+        message: `Usuario con identificación ${user.userId} no encontrado`,
+        data: [],
+      });
     }
 
-    const isSelfUpdate = user.userId === identification;
-
-    if (!isSelfUpdate && !user.roles?.some(role => ['admin', 'superadmin'].includes(role))) {
-      throw new ConflictException(
-        'No tienes permisos para actualizar perfiles de otros usuarios',
-      );
+    if (
+      updateUserRequest.user?.roles &&
+      !userToUpdate.roles?.includes('superadmin')
+    ) {
+      throw new ConflictException({
+        status: false,
+        message: 'No tienes permisos para modificar roles de otros usuarios',
+        data: [],
+      });
     }
 
-    if (updateUserRequest.user.roles && !isSelfUpdate) {
-      if (!user.roles?.includes('superadmin')) {
-        throw new ConflictException(
-          'No tienes permisos para modificar roles de otros usuarios',
-        );
-      }
-
-      if (userToUpdate.roles.includes('superadmin')) {
-        throw new ConflictException(
-          'No se puede cambiar el rol de un superadmin',
-        );
-      }
-
-      if (updateUserRequest.user.roles.includes('superadmin')) {
-        throw new ConflictException('No se puede asignar el rol de superadmin');
-      }
+    if (updateUserRequest.user?.roles?.includes('superadmin')) {
+      throw new ConflictException({
+        status: false,
+        message: 'No se puede asignar el rol de superadmin',
+        data: [],
+      });
     }
 
-    const updateData: any = {};
-    
-    if (updateUserRequest.user.first_name) updateData.first_name = updateUserRequest.user.first_name;
-    if (updateUserRequest.user.last_name) updateData.last_name = updateUserRequest.user.last_name;
-    if (updateUserRequest.user.phone) updateData.phone = updateUserRequest.user.phone;
-    if (updateUserRequest.user.avatar) updateData.avatar = updateUserRequest.user.avatar;
-    
-    if (updateUserRequest.user.roles && !isSelfUpdate && user.roles?.includes('superadmin')) {
-      updateData.roles = updateUserRequest.user.roles;
-    }
+    const updateData = { ...updateUserRequest.user };
 
     const { data, error } = await this.supabaseService.clientAdmin
       .from('profile')
       .update(updateData)
-      .eq('identification', identification)
+      .eq('identification', user.userId)
       .select(
         'identification, first_name, last_name, phone, email, roles, avatar, is_active',
       )
@@ -224,7 +221,7 @@ export class UsersService {
 
     return {
       status: true,
-      message: `Perfil del usuario ${data.first_name} ${data.last_name} actualizado correctamente`,
+      message: `Perfil actualizado correctamente`,
       data: [data],
     };
   }

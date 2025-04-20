@@ -26,13 +26,21 @@ export class AuthService {
       .single();
 
     if (error || !user) {
-      throw new UnauthorizedException('Credenciales incorrectas');
+      throw new UnauthorizedException({
+        status: false,
+        message: 'Credenciales incorrectas',
+        data: [],
+      });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales incorrectas');
+      throw new UnauthorizedException({
+        status: false,
+        message: 'Credenciales incorrectas',
+        data: [],
+      });
     }
 
     const { password: _, ...result } = user;
@@ -63,28 +71,35 @@ export class AuthService {
           last_name: user.last_name,
           identification: user.identification,
           phone: user.phone,
+          roles: user.roles,
         },
         token,
       },
     };
   }
 
-  async logout(userId: number): Promise<{ message: string }> {
+  async logout(userId: number) {
     const { error } = await this.supabaseService.clientAdmin
       .from('profile')
       .update({ token: null })
       .eq('identification', userId);
 
     if (error) {
-      throw new UnauthorizedException('Error al cerrar sesión');
+      throw new UnauthorizedException({
+        status: false,
+        message: 'Error al cerrar sesión',
+        data: [],
+      });
     }
 
     return {
+      status: true,
       message: 'Sesión cerrada correctamente',
+      data: [],
     };
   }
 
-  async passwordRecovery(email: string): Promise<{ message: string }> {
+  async passwordRecovery(email: string) {
     const { data, error } = await this.supabaseService.clientAdmin
       .from('profile')
       .select('identification, email, first_name, last_name')
@@ -92,7 +107,11 @@ export class AuthService {
       .single();
 
     if (error || !data) {
-      throw new BadRequestException('Correo electrónico no encontrado');
+      throw new BadRequestException({
+        status: false,
+        message: 'Correo electrónico no encontrado',
+        data: [],
+      });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -112,16 +131,20 @@ export class AuthService {
       .single();
 
     if (updateError) {
-      throw new BadRequestException(
-        'Error al generar el código de recuperación',
-      );
+      throw new BadRequestException({
+        status: false,
+        message: 'Error al generar el código de recuperación',
+        data: [],
+      });
     }
 
     // Enviar correo con el código OTP
     // await this.emailService.sendPasswordRecoveryEmail(email, otp);
 
     return {
+      status: true,
       message: 'Se ha enviado un código de verificación a tu correo',
+      data: [],
     };
   }
 
@@ -133,22 +156,30 @@ export class AuthService {
       .single();
 
     if (error || !user) {
-      throw new BadRequestException('Correo electrónico no encontrado');
+      throw new BadRequestException({
+        status: false,
+        message: 'Correo electrónico no encontrado',
+        data: [],
+      });
     }
 
     const now = new Date();
     const expiration = new Date(user.otp_expired);
 
     if (now > expiration) {
-      throw new BadRequestException(
-        'El código ha expirado, por favor solicite un nuevo código',
-      );
+      throw new BadRequestException({
+        status: false,
+        message: 'El código ha expirado, por favor solicite un nuevo código',
+        data: [],
+      });
     }
 
     if (user.otp !== otp) {
-      throw new BadRequestException(
-        'El código no es válido, por favor ingrese un código válido',
-      );
+      throw new BadRequestException({
+        status: false,
+        message: 'El código no es válido, por favor ingrese un código válido',
+        data: [],
+      });
     }
 
     const { error: updateError } = await this.supabaseService.clientAdmin
@@ -160,7 +191,11 @@ export class AuthService {
       .eq('email', email);
 
     if (updateError) {
-      throw new BadRequestException('Error al validar el código');
+      throw new BadRequestException({
+        status: false,
+        message: 'Error al validar el código',
+        data: [],
+      });
     }
 
     const resetToken = jwt.sign(
@@ -175,8 +210,11 @@ export class AuthService {
     );
 
     return {
+      status: true,
       message: 'Código validado correctamente',
-      resetToken,
+      data: {
+        resetToken,
+      },
     };
   }
 
@@ -186,8 +224,7 @@ export class AuthService {
         throw new UnauthorizedException({
           status: false,
           message: 'Token no proporcionado',
-          error: 'TOKEN_MISSING',
-          statusCode: 401,
+          data: [],
         });
       }
 
@@ -199,8 +236,7 @@ export class AuthService {
           throw new UnauthorizedException({
             status: false,
             message: 'El token ha expirado, solicite uno nuevo',
-            error: 'TOKEN_EXPIRED',
-            statusCode: 401,
+            data: [],
           });
         }
         if (error instanceof jwt.JsonWebTokenError) {
@@ -208,24 +244,21 @@ export class AuthService {
             throw new UnauthorizedException({
               status: false,
               message: 'Formato de token inválido',
-              error: 'TOKEN_MALFORMED',
-              statusCode: 401,
+              data: [],
             });
           }
           if (error.message === 'invalid signature') {
             throw new UnauthorizedException({
               status: false,
               message: 'Token no válido',
-              error: 'INVALID_SIGNATURE',
-              statusCode: 401,
+              data: [],
             });
           }
         }
         throw new UnauthorizedException({
           status: false,
           message: 'Token inválido',
-          error: 'INVALID_TOKEN',
-          statusCode: 401,
+          data: [],
         });
       }
 
@@ -233,8 +266,7 @@ export class AuthService {
         throw new UnauthorizedException({
           status: false,
           message: 'Token no válido para cambio de contraseña',
-          error: 'INVALID_TOKEN_TYPE',
-          statusCode: 401,
+          data: [],
         });
       }
 
@@ -254,8 +286,7 @@ export class AuthService {
         throw new BadRequestException({
           status: false,
           message: 'Error al actualizar la contraseña',
-          error: 'UPDATE_ERROR',
-          statusCode: 400,
+          data: [],
         });
       }
 
@@ -269,7 +300,7 @@ export class AuthService {
       return {
         status: true,
         message: 'Contraseña actualizada correctamente',
-        statusCode: 200,
+        data: [],
       };
     } catch (error) {
       if (error.response) {
@@ -278,8 +309,7 @@ export class AuthService {
       throw new InternalServerErrorException({
         status: false,
         message: 'Error interno del servidor',
-        error: 'INTERNAL_SERVER_ERROR',
-        statusCode: 500,
+        data: [],
       });
     }
   }
@@ -297,15 +327,14 @@ export class AuthService {
         throw new BadRequestException({
           status: false,
           message: 'Error al actualizar la contraseña',
-          error: 'UPDATE_ERROR',
-          statusCode: 400,
+          data: [],
         });
       }
 
       return {
         status: true,
         message: 'Contraseña actualizada correctamente',
-        statusCode: 200,
+        data: [],
       };
     } catch (error) {
       if (error.response) {
@@ -314,8 +343,7 @@ export class AuthService {
       throw new InternalServerErrorException({
         status: false,
         message: 'Error interno del servidor',
-        error: 'INTERNAL_SERVER_ERROR',
-        statusCode: 500,
+        data: [],
       });
     }
   }
