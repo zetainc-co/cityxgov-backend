@@ -14,7 +14,7 @@ import { UsersService } from './users.service';
 import { CreateUserRequest, UpdateUserRequest } from 'src/types/user.type';
 import { JwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guard/roles.guard';
-import { ValidateUserPipe } from 'src/common/pipe/users.pipe';
+import { ValidateUserPipe, ValidateUserUpdatePipe } from 'src/common/pipe/users.pipe';
 import { Roles } from 'src/common/decorator/roles.decorator';
 
 @Controller('users')
@@ -50,15 +50,14 @@ export class UsersController {
     return this.usersService.updateUserStatus(id);
   }
 
-  @Patch(':identification')
+  @Patch()
   @Roles('superadmin')
-  @UsePipes(ValidateUserPipe)
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @UsePipes(ValidateUserUpdatePipe)
   async updateUser(
-    @Param('identification', ParseIntPipe) identification: number,
     @Body() updateUserRequest: UpdateUserRequest,
     @Req() req,
   ) {
-    return this.usersService.updateUser(identification, updateUserRequest, req.user);
+    return this.usersService.updateUser(updateUserRequest, req.user);
   }
 }
