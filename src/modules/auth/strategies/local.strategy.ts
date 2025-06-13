@@ -7,13 +7,13 @@ import { AuthService } from 'src/modules/auth/auth.service';
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     super({
-      usernameField: 'email',
-      passwordField: 'password',
+      usernameField: 'correo',
+      passwordField: 'contraseña',
     });
   }
 
-  async validate(email: string, password: string) {
-    const user = await this.authService.validateUser(email, password);
+  async validate(correo: string, contrasena: string) {
+    const user = await this.authService.validateUser(correo, contrasena);
     if (!user) {
       throw new UnauthorizedException('Usuario o contraseña incorrectos');
     }
