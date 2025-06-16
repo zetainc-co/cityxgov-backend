@@ -8,13 +8,13 @@ import { SupabaseService } from 'src/config/supabase/supabase.service';
 import { LoginDto } from 'src/modules/auth/types/auth.type';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-// import { EmailService } from 'src/config/email/email.service';
+import { EmailService } from 'src/config/email/email.service';
 
 @Injectable()
 export class AuthService {
     constructor(
         private supabaseService: SupabaseService,
-        // private emailService: EmailService,
+        private emailService: EmailService,
     ) { }
 
     async validateUser(correo: string, contrasena: string) {
@@ -162,7 +162,7 @@ export class AuthService {
         }
 
         // Enviar correo con el código OTP
-        // await this.emailService.sendPasswordRecoveryEmail(email, otp);
+        await this.emailService.sendPasswordRecoveryEmail(data.correo, otp);
 
         return {
             status: true,
@@ -314,11 +314,7 @@ export class AuthService {
             }
 
             // Enviar correo de confirmación de cambio de contraseña
-            // await this.emailService.sendPasswordChangedEmail({
-            //   firstName: user.first_name,
-            //   lastName: user.last_name,
-            //   email: user.email,
-            // });
+            await this.emailService.sendPasswordChangedEmail(user.correo, user.nombre, user.apellido);
 
             return {
                 status: true,

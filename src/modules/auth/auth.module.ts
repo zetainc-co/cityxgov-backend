@@ -6,6 +6,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuthService } from './auth.service';
 import { SupabaseModule } from '../../config/supabase/supabase.module';
 import { AuthController } from './auth.controller';
+import { EmailService } from '../../config/email/email.service';
 @Module({
   imports: [
     JwtModule.registerAsync({
@@ -18,7 +19,7 @@ import { AuthController } from './auth.controller';
     SupabaseModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, EmailService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

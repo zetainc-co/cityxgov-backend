@@ -49,12 +49,12 @@ export class MgaController {
     }
 
     @Get(':id')
-    async findOne(@Param('id', ParseIntPipe) id: number) {
+    async findOne(@Param('id') id: number) {
         return await this.mgaService.findOne(id);
     }
 
     @Delete(':id')
-    async delete(@Param('id', ParseIntPipe) id: number) {
+    async delete(@Param('id') id: number) {
         await this.mgaService.delete(id);
         return { message: 'Registro MGA eliminado exitosamente' };
     }

@@ -3,24 +3,24 @@ export interface Programa {
   linea_estrategica_id: number;
   nombre: string;
   descripcion: string;
-  create_at: string;
-  update_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface CreateProgramaRequest {
+export interface ProgramaRequest {
   linea_estrategica_id: number;
   nombre: string;
   descripcion: string;
 }
 
 export interface FindAllProgramasResponse {
-  status: number;
+  status: boolean;
   message: string;
   data: Programa[];
   error?: any;
 }
 
-export interface CreateProgramaResponse {
+export interface ProgramaResponse {
   status: boolean;
   message: string;
   data?: Programa[];

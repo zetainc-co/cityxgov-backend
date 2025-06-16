@@ -383,39 +383,39 @@ export class UsuariosService {
         }
     }
 
-    async findAllUsuariosAreas() {
-        const { data, error } = await this.supabaseService.clientAdmin
-            .from('usuario_area')
-            .select(`
-                usuario_id,
-                usuarios:usuario_id!inner (
-                    id,
-                    identificacion,
-                    nombre,
-                    apellido,
-                    correo,
-                    telefono,
-                    avatar,
-                    activo
-                ),
-                area:area_id!inner (
-                    id,
-                    nombre,
-                    descripcion
-                )
-            `)
-            .order('usuario_id', { ascending: true });
+    // async findAllUsuariosAreas() {
+    //     const { data, error } = await this.supabaseService.clientAdmin
+    //         .from('usuario_area')
+    //         .select(`
+    //             usuario_id,
+    //             usuarios:usuario_id!inner (
+    //                 id,
+    //                 identificacion,
+    //                 nombre,
+    //                 apellido,
+    //                 correo,
+    //                 telefono,
+    //                 avatar,
+    //                 activo
+    //             ),
+    //             area:area_id!inner (
+    //                 id,
+    //                 nombre,
+    //                 descripcion
+    //             )
+    //         `)
+    //         .order('usuario_id', { ascending: true });
 
-        if (error) {
-            throw new InternalServerErrorException('Error al obtener usuarios con áreas: ' + error.message);
-        }
+    //     if (error) {
+    //         throw new InternalServerErrorException('Error al obtener usuarios con áreas: ' + error.message);
+    //     }
 
-        return {
-            status: true,
-            message: 'Usuarios con áreas obtenidos correctamente',
-            data: data
-        }
-    }
+    //     return {
+    //         status: true,
+    //         message: 'Usuarios con áreas obtenidos correctamente',
+    //         data: data
+    //     }
+    // }
 
 }
 

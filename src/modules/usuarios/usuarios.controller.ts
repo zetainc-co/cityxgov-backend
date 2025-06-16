@@ -40,11 +40,11 @@ export class UsuariosController {
     }
 
     // Obtener todos los usuarios  con areas
-    @Get('usuarios-areas')
-    @Roles('admin', 'superadmin')
-    async findAllUsuariosAreas() {
-        return await this.usuariosService.findAllUsuariosAreas();
-    }
+    // @Get('usuarios-areas')
+    // @Roles('admin', 'superadmin')
+    // async findAllUsuariosAreas() {
+    //     return await this.usuariosService.findAllUsuariosAreas();
+    // }
 
     // Obtener un usuario por su identificación
     @Get(':identificacion')
