@@ -207,6 +207,7 @@ export class MetaResultadoService {
                     linea_base: updateRequest.linea_base.trim(),
                     meta_cuatrienio: updateRequest.meta_cuatrienio.trim(),
                     fuente: updateRequest.fuente.trim(),
+                    linea_estrategica_id: updateRequest.linea_estrategica_id,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id)

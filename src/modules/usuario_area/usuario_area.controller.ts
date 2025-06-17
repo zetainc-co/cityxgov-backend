@@ -7,12 +7,13 @@ import {
     UseGuards,
     Controller,
     ParseIntPipe,
-    ValidationPipe
+    ValidationPipe,
+    Put
 } from '@nestjs/common';
 import { UsuarioAreaService } from './usuario_area.service';
 import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
 import { Roles } from 'src/modules/rol/decorator/roles.decorator';
-import { CreateUsuarioAreaRequest } from './dto/usuario_area.dto';
+import { UpdateUsuarioAreaDto, UpdateUsuarioAreaRequest, UsuarioAreaRequest } from './dto/usuario_area.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
 
 @Controller('usuario-area')
@@ -23,7 +24,7 @@ export class UsuarioAreaController {
 
     // Crear nueva asignación
     @Post()
-    async create( @Body(ValidationPipe) body: CreateUsuarioAreaRequest ) {
+    async create( @Body(ValidationPipe) body: UsuarioAreaRequest ) {
         return await this.usuarioAreaService.create(body);
     }
 
@@ -37,6 +38,12 @@ export class UsuarioAreaController {
     @Get('usuario/:userId')
     async findByUser( @Param('userId', ParseIntPipe) userId: number ) {
         return await this.usuarioAreaService.findByUser(userId);
+    }
+
+    // Actualizar una asignación específica
+    @Put(':id')
+    async update( @Param('id', ParseIntPipe) id: number, @Body(ValidationPipe) body: UpdateUsuarioAreaDto) {
+        return await this.usuarioAreaService.update(id, body.usuarioArea);
     }
 
     // Eliminar una asignación específica

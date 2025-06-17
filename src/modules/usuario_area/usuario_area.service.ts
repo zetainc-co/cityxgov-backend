@@ -5,10 +5,11 @@ import {
 import { SupabaseService } from 'src/config/supabase/supabase.service';
 import {
     UsuarioAreaResponse,
-    CreateUsuarioAreaRequest,
     UsuarioConAsignaciones,
     AsignacionExpanded,
     Usuario,
+    UsuarioAreaUpdateData,
+    UsuarioAreaRequest,
 } from './dto/usuario_area.dto';
 
 @Injectable()
@@ -248,7 +249,7 @@ export class UsuarioAreaService {
     }
 
     // Crear nueva asignación
-    async create(createRequest: CreateUsuarioAreaRequest): Promise<UsuarioAreaResponse> {
+    async create(createRequest: UsuarioAreaRequest): Promise<UsuarioAreaResponse> {
         try {
             console.log('Payload recibido en /usuario-area:', createRequest);
             // Verificar si el usuario existe
@@ -350,6 +351,128 @@ export class UsuarioAreaService {
             return {
                 status: 500,
                 message: 'Error al crear la asignación',
+                error: error.message
+            };
+        }
+    }
+
+    // Actualizar una asignación específica
+    async update(
+        id: number,
+        updateData: { area_id?: number; rol_id?: number }
+    ): Promise<UsuarioAreaResponse> {
+        try {
+            // 1. Verificar que la asignación exista
+            const { data: existingAssignment, error: getError } = await this.supabaseService.clientAdmin
+                .from('usuario_area')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (getError || !existingAssignment) {
+                return {
+                    status: 404,
+                    message: 'No se encontró la asignación especificada',
+                    data: []
+                };
+            }
+
+            // 2. Verificar que el área exista (si se va a actualizar)
+            if (updateData.area_id) {
+                const { data: areaExists, error: areaError } = await this.supabaseService.clientAdmin
+                    .from('area')
+                    .select('id')
+                    .eq('id', updateData.area_id)
+                    .single();
+                if (areaError || !areaExists) {
+                    return {
+                        status: 404,
+                        message: 'El área especificada no existe',
+                        data: []
+                    };
+                }
+            }
+
+            // 3. Verificar que el rol exista (si se va a actualizar)
+            if (updateData.rol_id) {
+                const { data: rolExists, error: rolError } = await this.supabaseService.clientAdmin
+                    .from('rol')
+                    .select('id')
+                    .eq('id', updateData.rol_id)
+                    .single();
+                if (rolError || !rolExists) {
+                    return {
+                        status: 404,
+                        message: 'El rol especificado no existe',
+                        data: []
+                    };
+                }
+            }
+
+            // 4. Actualizar la asignación
+            const { data: updated, error: updateError } = await this.supabaseService.clientAdmin
+                .from('usuario_area')
+                .update(updateData)
+                .eq('id', id)
+                .select(`
+                id,
+                usuario_id,
+                area_id,
+                rol_id,
+                created_at,
+                updated_at,
+                usuarios:usuario_id (
+                    id,
+                    identificacion,
+                    nombre,
+                    apellido,
+                    correo,
+                    telefono,
+                    avatar,
+                    activo
+                ),
+                area:area_id (
+                    id,
+                    nombre,
+                    descripcion
+                ),
+                rol:rol_id (
+                    id,
+                    nombre,
+                    descripcion
+                )
+            `)
+                .single();
+
+            if (updateError) {
+                throw new InternalServerErrorException('Error al actualizar la asignación: ' + updateError.message);
+            }
+
+            const usuario = Array.isArray(updated.usuarios) ? updated.usuarios[0] : updated.usuarios;
+            const area = Array.isArray(updated.area) ? updated.area[0] : updated.area;
+            const rol = Array.isArray(updated.rol) ? updated.rol[0] : updated.rol;
+
+            const usuarioConAsignacionActualizada: UsuarioConAsignaciones = {
+                usuario: usuario,
+                asignaciones: [{
+                    id: updated.id,
+                    area: area,
+                    rol: rol,
+                    created_at: updated.created_at,
+                    updated_at: updated.updated_at
+                }]
+            };
+
+            return {
+                status: 200,
+                message: `Asignación actualizada correctamente para ${usuario.nombre} ${usuario.apellido}`,
+                data: [usuarioConAsignacionActualizada]
+            };
+        } catch (error) {
+            console.error('Service error:', error);
+            return {
+                status: 500,
+                message: 'Error al actualizar la asignación',
                 error: error.message
             };
         }

@@ -1,4 +1,3 @@
-// DTO básico para la tabla usuario_area
 export interface UsuarioArea {
     id: number;
     usuario_id: number;
@@ -8,8 +7,7 @@ export interface UsuarioArea {
     updated_at: string;
 }
 
-// DTO para crear una nueva asignación
-export interface CreateUsuarioAreaRequest {
+export interface UsuarioAreaRequest {
     usuarioArea: {
         usuario_id: number;
         area_id: number;
@@ -17,10 +15,8 @@ export interface CreateUsuarioAreaRequest {
     };
 }
 
-// DTO para actualizar una asignación (mismo que crear)
-export interface UpdateUsuarioAreaRequest extends CreateUsuarioAreaRequest {}
+export interface UpdateUsuarioAreaRequest extends UsuarioAreaRequest {}
 
-// Interface for the user data
 export interface Usuario {
     id: number;
     identificacion: string;
@@ -32,21 +28,18 @@ export interface Usuario {
     activo: boolean;
 }
 
-// Interface for the area data
 export interface Area {
     id: number;
     nombre: string;
     descripcion: string;
 }
 
-// Interface for the rol data
 export interface Rol {
     id: number;
     nombre: string;
     descripcion: string;
 }
 
-// Interface for expanded usuario_area data
 export interface UsuarioAreaExpanded {
     id: number;
     usuario_id: number;
@@ -59,7 +52,6 @@ export interface UsuarioAreaExpanded {
     updated_at: string;
 }
 
-// Interface for expanded usuario_area data (assignment data without user info)
 export interface AsignacionExpanded {
     id: number;
     area: Area | null;
@@ -68,13 +60,11 @@ export interface AsignacionExpanded {
     updated_at: string;
 }
 
-// Interface for user with their assignments
 export interface UsuarioConAsignaciones {
     usuario: Usuario;
     asignaciones: AsignacionExpanded[];
 }
 
-// DTO para la respuesta de la API
 export interface UsuarioAreaResponse {
     status: number;
     message: string;
@@ -92,7 +82,6 @@ export class UsuarioAreaCreateData {
     rol_id: number;
 }
 
-// DTO para respuestas simplificadas
 export interface SimpleUsuarioAreaResponse {
     id: number;
     usuario_nombre: string;
@@ -101,7 +90,6 @@ export interface SimpleUsuarioAreaResponse {
     created_at: string;
 }
 
-// Interface for Supabase response structure
 export interface UsuarioAreaWithRelations {
     id: number;
     usuario_id: number;
@@ -112,4 +100,13 @@ export interface UsuarioAreaWithRelations {
     usuarios: Usuario;
     area: Area;
     rol: Rol;
+}
+
+export class UpdateUsuarioAreaDto {
+    usuarioArea: UsuarioAreaUpdateData;
+}
+
+export class UsuarioAreaUpdateData {
+    area_id: number;
+    rol_id: number;
 }

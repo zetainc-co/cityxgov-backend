@@ -282,6 +282,40 @@ export class LineaEstrategicaService {
                 }
             }
 
+            // Validar si hay programas asociados
+            const { data: programasAsociados, error: programasError } = await this.supabaseService.clientAdmin
+                .from('programa')
+                .select('id, nombre')
+                .eq('linea_estrategica_id', id);
+            if (programasError) {
+                throw new InternalServerErrorException('Error al verificar programas asociados: ' + programasError.message);
+            }
+            if (programasAsociados && programasAsociados.length > 0) {
+                const nombres = programasAsociados.map(p => p.nombre).join(', ');
+                return {
+                    status: false,
+                    message: `No se puede eliminar la línea estratégica porque está asociada a los siguientes programas: ${nombres}`,
+                    error: 'Relacion encontrada'
+                }
+            }
+
+            // Validar si hay metas resultado asociadas
+            const { data: metasAsociadas, error: metasError } = await this.supabaseService.clientAdmin
+                .from('meta_resultado')
+                .select('id, nombre')
+                .eq('linea_estrategica_id', id);
+            if (metasError) {
+                throw new InternalServerErrorException('Error al verificar metas resultado asociadas: ' + metasError.message);
+            }
+            if (metasAsociadas && metasAsociadas.length > 0) {
+                const nombres = metasAsociadas.map(m => m.nombre).join(', ');
+                return {
+                    status: false,
+                    message: `No se puede eliminar la línea estratégica porque está asociada a las siguientes metas de resultado: ${nombres}`,
+                    error: 'Relacion encontrada'
+                }
+            }
+
             // Elimina la línea estratégica
             const { error } = await this.supabaseService.clientAdmin
             .from('linea_estrategica')
