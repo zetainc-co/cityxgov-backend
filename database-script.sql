@@ -207,10 +207,16 @@ CREATE TABLE financiacion_periodo (
 -- Tabla: metas_resultado_producto
 CREATE TABLE metas_resultado_producto (
     id SERIAL PRIMARY KEY,
-    meta_producto VARCHAR,
-    meta_resultado VARCHAR,
+    meta_producto_id INTEGER NOT NULL,
+    meta_resultado_id INTEGER NOT NULL,
     create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    update_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT fk_metas_resultado_producto_meta_producto
+        FOREIGN KEY (meta_producto_id) REFERENCES meta_producto(id),
+    CONSTRAINT fk_metas_resultado_producto_meta_resultado
+        FOREIGN KEY (meta_resultado_id) REFERENCES meta_resultado(id),
+    CONSTRAINT unique_meta_producto_resultado
+        UNIQUE (meta_producto_id, meta_resultado_id)
 );
 
 -- ================================================================

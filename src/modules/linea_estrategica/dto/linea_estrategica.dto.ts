@@ -1,4 +1,3 @@
-// Linea estrategica
 export interface LineaEstrategica {
     id: number;
     nombre: string;
@@ -9,15 +8,13 @@ export interface LineaEstrategica {
     updated_at: string;
 }
 
-// Crear una linea estrategica
-export interface CreateLineaEstrategicaRequest {
+export interface LineaEstrategicaRequest {
     nombre: string;
     descripcion?: string | null;
     plan_nacional: string;
     plan_departamental: string;
 }
 
-// Respuesta de la creación de una linea estrategica
 export interface LineaEstrategicaResponse {
     status: boolean;
     message: string;

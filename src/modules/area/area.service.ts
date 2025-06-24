@@ -1,9 +1,10 @@
 import {
     Injectable,
     InternalServerErrorException,
+    BadRequestException,
 } from '@nestjs/common';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { CreateAreaRequest, AreaResponse, Area } from './dto/area.dto';
+import { AreaResponse, Area, AreaRequest } from './dto/area.dto';
 
 @Injectable()
 export class AreaService {
@@ -15,7 +16,7 @@ export class AreaService {
             const { data, error } =
                 await this.supabaseService.clientAdmin
                     .from('area')
-                    .select('id, nombre, descripcion, created_at, updated_at')
+                    .select('*')
                     .order('created_at', { ascending: false });
 
             if (error) {
@@ -25,9 +26,14 @@ export class AreaService {
             return {
                 status: true,
                 message: 'Áreas encontradas correctamente',
-                data: data as Area[]
+                data: data,
+                error: null
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al obtener áreas',
@@ -41,36 +47,32 @@ export class AreaService {
         try {
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('area')
-                .select('id, nombre, descripcion, created_at, updated_at')
+                .select('*')
                 .eq('id', id)
-                .single();
+                .maybeSingle();
+
+            if (error) {
+                throw new InternalServerErrorException('Error al obtener área: ' + error.message);
+            }
 
             if (!data) {
                 return {
                     status: false,
                     message: `No existe una área con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
-
-            if (error) {
-                throw new InternalServerErrorException('Error al obtener área: ' + error);
-            }
-
-            const area: Area = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            };
-
             return {
                 status: true,
                 message: 'Área encontrada correctamente',
-                data: [area]
+                data: data
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al obtener área',
@@ -80,14 +82,14 @@ export class AreaService {
     }
 
     // Crea una nueva área
-    async create(createRequest: CreateAreaRequest): Promise<AreaResponse> {
+    async create(createRequest: AreaRequest): Promise<AreaResponse> {
         try {
             // Validar si el nombre ya existe
             const { data: existingLinea, error: validationError } =
             await this.supabaseService.clientAdmin
             .from('area')
             .select('id')
-            .eq('nombre', createRequest.area.nombre)
+            .eq('nombre', createRequest.nombre)
             .maybeSingle();
 
             if (validationError) {
@@ -106,43 +108,35 @@ export class AreaService {
             const { data, error } =
                 await this.supabaseService.clientAdmin
                     .from('area')
-                    .insert([{
-                        nombre: createRequest.area.nombre,
-                        descripcion: createRequest.area.descripcion || null,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }])
-                    .select('id, nombre, descripcion, created_at, updated_at')
+                    .insert(createRequest)
                     .single();
 
             if (error) {
                 throw new InternalServerErrorException('Error al crear área: ' + error.message);
             }
 
-            const areaData: Area = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            };
-
             return {
                 status: true,
                 message: 'Área creada correctamente',
-                data: [areaData]
+                data: data,
+                error: null
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al crear área',
-                error: error.message
+                error: error.message,
+                data: []
             };
         }
     }
 
     // Actualiza una área
-    async update(id: number, createRequest: CreateAreaRequest): Promise<AreaResponse> {
+    async update(id: number, createRequest: AreaRequest): Promise<AreaResponse> {
         try {
             // Primero verificar si existe
             const { data: existingData, error: checkError } =
@@ -160,7 +154,8 @@ export class AreaService {
                 return {
                     status: false,
                     message: `No existe una área con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
 
@@ -169,7 +164,7 @@ export class AreaService {
             await this.supabaseService.clientAdmin
             .from('area')
             .select('id')
-            .eq('nombre', createRequest.area.nombre)
+            .eq('nombre', createRequest.nombre)
             .neq('id', id)
             .maybeSingle();
 
@@ -181,27 +176,21 @@ export class AreaService {
                 return {
                     status: false,
                     message: 'Ya existe otra área con este nombre',
-                    error: 'Nombre duplicado'
+                    error: 'Nombre duplicado',
+                    data: []
                 }
             }
 
             // Verificar si hay cambios
-            const hasChanges =
-                existingData.nombre !== createRequest.area.nombre ||
-                existingData.descripcion !== createRequest.area.descripcion;
-
-            if (!hasChanges) {
+            if (
+                existingData.nombre === createRequest.nombre && 
+                existingData.descripcion === createRequest.descripcion
+            ) {
                 return {
                     status: false,
                     message: 'No se detectaron cambios en la área',
                     error: 'Sin cambios',
-                    data: [{
-                        id: existingData.id,
-                        nombre: existingData.nombre,
-                        descripcion: existingData.descripcion,
-                        created_at: existingData.created_at,
-                        updated_at: existingData.updated_at
-                    }]
+                    data: existingData
                 }
             }
 
@@ -209,32 +198,27 @@ export class AreaService {
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('area')
                 .update({
-                    nombre: createRequest.area.nombre,
-                    descripcion: createRequest.area.descripcion,
-                    updated_at: new Date().toISOString()
+                    nombre: createRequest.nombre,
+                    descripcion: createRequest.descripcion,
                 })
                 .eq('id', id)
-                .select('id, nombre, descripcion, created_at, updated_at')
                 .single();
 
             if (error) {
                 throw new InternalServerErrorException('Error al actualizar área: ' + error.message);
             }
 
-            const updatedArea: Area = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            };
-
             return {
                 status: true,
                 message: 'Área actualizada correctamente',
-                data: [updatedArea]
+                data: data,
+                error: null
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al actualizar área',
@@ -246,7 +230,7 @@ export class AreaService {
     // Elimina una área
     async delete(id: number): Promise<AreaResponse> {
         try {
-            // Primero verificar si existe
+            // 1. Verificar si el área existe
             const { data: existingData, error: checkError } =
             await this.supabaseService.clientAdmin
                 .from('area')
@@ -262,11 +246,56 @@ export class AreaService {
                 return {
                     status: false,
                     message: `No existe una área con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
 
-            // Elimina la área
+            // 2. Verificar si está siendo usada en usuario_area
+            const { data: usuariosArea, error: usuariosError } = await this.supabaseService.clientAdmin
+                .from('usuario_area')
+                .select('id, usuario_id')
+                .eq('area_id', id)
+                .limit(5);
+
+            if (usuariosError) {
+                throw new InternalServerErrorException(
+                    'Error al verificar uso del área en usuario_area: ' + usuariosError.message,
+                );
+            }
+
+            if (usuariosArea && usuariosArea.length > 0) {
+                return {
+                    status: false,
+                    message: `No se puede eliminar el área porque está siendo usada por ${usuariosArea.length} usuario(s)`,
+                    error: 'Área en uso por usuarios',
+                    data: []
+                };
+            }
+
+            // 3. Verificar si está siendo usada en meta_producto
+            const { data: metasProducto, error: metasError } = await this.supabaseService.clientAdmin
+                .from('meta_producto')
+                .select('id')
+                .eq('area_id', id)
+                .limit(5);
+
+            if (metasError) {
+                throw new InternalServerErrorException(
+                    'Error al verificar uso del área en meta_producto: ' + metasError.message,
+                );
+            }
+
+            if (metasProducto && metasProducto.length > 0) {
+                return {
+                    status: false,
+                    message: `No se puede eliminar el área porque está siendo usada por ${metasProducto.length} meta(s) producto`,
+                    error: 'Área en uso por metas producto',
+                    data: []
+                };
+            }
+
+            // 4. Eliminar el área
             const { error } = await this.supabaseService.clientAdmin
                 .from('area')
                 .delete()
@@ -278,14 +307,19 @@ export class AreaService {
 
             return {
                 status: true,
-                message: 'Área eliminada correctamente',
+                message: `Área ${existingData.nombre} ha sido eliminada correctamente`,
                 data: []
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al eliminar área',
-                error: error.message
+                error: error.message,
+                data: []
             };
         }
     }

@@ -1,10 +1,10 @@
 import {
     Injectable,
-    ConflictException,
+    BadRequestException,
     InternalServerErrorException,
 } from '@nestjs/common';
+import { RoleResponse, RoleRequest } from './dto/rol.dto';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { CreateRoleRequest, RoleResponse, Role } from './dto/rol.dto';
 
 @Injectable()
 export class RolService {
@@ -16,7 +16,7 @@ export class RolService {
             const { data, error } =
                 await this.supabaseService.clientAdmin
                     .from('rol')
-                    .select('id, nombre, descripcion, created_at, updated_at')
+                    .select('*')
                     .order('created_at', { ascending: false });
 
             if (error) {
@@ -26,19 +26,19 @@ export class RolService {
             return {
                 status: true,
                 message: 'Roles encontrados correctamente',
-                data: data.map(rol => ({
-                    id: rol.id,
-                    nombre: rol.nombre,
-                    descripcion: rol.descripcion,
-                    created_at: rol.created_at,
-                    updated_at: rol.updated_at
-                }))
+                data: data,
+                error: null
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al obtener roles',
-                error: error.message
+                error: error.message,
+                data: []
             };
         }
     }
@@ -48,92 +48,79 @@ export class RolService {
         try {
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('rol')
-                .select('id, nombre, descripcion, created_at, updated_at')
+                .select('*')
                 .eq('id', id)
-                .single();
+                .maybeSingle();
+
+            if (error) {
+                throw new InternalServerErrorException('Error al buscar rol: ' + error.message);
+            }
 
             if (!data) {
                 return {
                     status: false,
                     message: `No existe un rol con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
-
-            if (error) {
-                if (error) {
-                    throw new InternalServerErrorException('Error al obtener rol: ' + error);
-                }
-            }
-
-            const role: Role = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            };
 
             return {
                 status: true,
                 message: 'Rol encontrado correctamente',
-                data: [role]
+                data: data
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
-                message: error.message,
-                error: error.message
+                message: 'Error al buscar rol',
+                error: error.message,
+                data: []
             };
         }
     }
 
     // Crea un nuevo rol
-    async create(createRequest: CreateRoleRequest): Promise<RoleResponse> {
+    async create(createRequest: RoleRequest): Promise<RoleResponse> {
         try {
             // Crear el rol
             const { data, error } =
                 await this.supabaseService.clientAdmin
                     .from('rol')
-                    .insert([{
-                        nombre: createRequest.role.nombre,
-                        descripcion: createRequest.role.descripcion || null,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }])
-                    .select('id, nombre, descripcion, created_at, updated_at')
+                    .insert(createRequest)
                     .single();
 
             if (error) {
                 throw new InternalServerErrorException('Error al crear rol: ' + error.message);
             }
 
-            const roleCreated: Role = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            };
-
             return {
                 status: true,
                 message: 'Rol creado correctamente',
-                data: [roleCreated]
+                data: data
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al crear rol',
-                error: error.message
+                error: error.message,
+                data: []
             };
         }
     }
 
     // Actualiza un rol
-    async update(id: number, createRequest: CreateRoleRequest): Promise<RoleResponse> {
+    async update(id: number, updateRequest: RoleRequest): Promise<RoleResponse> {
         try {
-            // Primero verificar si existe
+            // 1. Verificar si existe
             const { data: existingData, error: checkError } =
             await this.supabaseService.clientAdmin
                 .from('rol')
@@ -142,71 +129,84 @@ export class RolService {
                 .maybeSingle();
 
             if (checkError) {
-                throw new InternalServerErrorException('Error al verificar rol: ' + checkError.message);
+                throw new InternalServerErrorException('Error al verificar rol');
             }
 
             if (!existingData) {
                 return {
                     status: false,
                     message: `No existe un rol con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
 
-            // Verificar si hay cambios
-            const hasChanges =
-                existingData.nombre !== createRequest.role.nombre ||
-                existingData.descripcion !== createRequest.role.descripcion;
+            // 2. Validar si el nombre ya existe en otro rol
+            const { data: existingRole, error: validationError } =
+                await this.supabaseService.clientAdmin
+                    .from('rol')
+                    .select('id')
+                    .eq('nombre', updateRequest.nombre.trim())
+                    .neq('id', id)
+                    .maybeSingle();
 
-            if (!hasChanges) {
+            if (validationError) {
+                throw new InternalServerErrorException('Error al validar nombre de rol: ' + validationError.message);
+            }
+
+            if (existingRole) {
+                return {
+                    status: false,
+                    message: 'Ya existe un rol con este nombre',
+                    error: 'Nombre duplicado',
+                    data: []
+                }
+            }
+
+            // 3. Verificar si hay cambios
+            if (
+                existingData.nombre === updateRequest.nombre.trim() &&
+                existingData.descripcion === updateRequest.descripcion?.trim()
+            ) {
                 return {
                     status: false,
                     message: 'No se detectaron cambios en el rol',
                     error: 'Sin cambios',
-                    data: [{
-                        id: existingData.id,
-                        nombre: existingData.nombre,
-                        descripcion: existingData.descripcion,
-                        created_at: existingData.created_at,
-                        updated_at: existingData.updated_at
-                    }]
+                    data: existingData
                 }
             }
 
-            // Actualizar el rol
+            // 4. Actualizar el rol
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('rol')
                 .update({
-                    nombre: createRequest.role.nombre,
-                    descripcion: createRequest.role.descripcion,
-                    updated_at: new Date().toISOString()
+                    nombre: updateRequest.nombre.trim(),
+                    descripcion: updateRequest.descripcion?.trim() || null,
                 })
                 .eq('id', id)
-                .select('id, nombre, descripcion, created_at, updated_at')
+                .select('*')
                 .single();
 
             if (error) {
-                throw new ConflictException(error);
+                throw new InternalServerErrorException('Error al actualizar rol: ' + error.message);
             }
-
-            const updatedRole: Role = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            };
 
             return {
                 status: true,
                 message: 'Rol actualizado correctamente',
-                data: [updatedRole]
+                data: data,
+                error: null
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al actualizar rol',
-                error: error.message
+                error: error.message,
+                data: []
             };
         }
     }
@@ -214,7 +214,7 @@ export class RolService {
     // Elimina un rol
     async delete(id: number): Promise<RoleResponse> {
         try {
-            // Primero verificar si existe
+            // 1. Verificar si el rol existe
             const { data: existingData, error: checkError } =
             await this.supabaseService.clientAdmin
                 .from('rol')
@@ -230,29 +230,58 @@ export class RolService {
                 return {
                     status: false,
                     message: `No existe un rol con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
 
+            // 2. Verificar si está siendo usado en usuario_area
+            const { data: usuariosArea, error: usuariosError } = await this.supabaseService.clientAdmin
+                .from('usuario_area')
+                .select('id, usuario_id')
+                .eq('rol_id', id)
+                .limit(5);
+
+            if (usuariosError) {
+                throw new InternalServerErrorException(
+                    'Error al verificar uso del rol en usuario_area: ' + usuariosError.message,
+                );
+            }
+
+            if (usuariosArea && usuariosArea.length > 0) {
+                return {
+                    status: false,
+                    message: `No se puede eliminar el rol porque está siendo usado por ${usuariosArea.length} usuario(s)`,
+                    error: 'Rol en uso',
+                    data: []
+                };
+            }
+
+            // 3. Eliminar el rol
             const { error } = await this.supabaseService.clientAdmin
                 .from('rol')
                 .delete()
                 .eq('id', id);
 
             if (error) {
-                throw new ConflictException(error);
+                throw new InternalServerErrorException('Error al eliminar rol: ' + error.message);
             }
 
             return {
                 status: true,
-                message: 'Rol eliminado correctamente',
+                message: `Rol ${existingData.nombre} ha sido eliminado correctamente`,
                 data: []
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al eliminar rol',
-                error: error.message
+                error: error.message,
+                data: []
             };
         }
     }

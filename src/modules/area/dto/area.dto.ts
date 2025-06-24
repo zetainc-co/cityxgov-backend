@@ -6,11 +6,9 @@ export interface Area {
     updated_at: string;
 }
 
-export interface CreateAreaRequest {
-    area: {
-        nombre: string;
-        descripcion?: string;
-    };
+export interface AreaRequest {
+    nombre: string;
+    descripcion?: string;
 }
 
 export interface AreaResponse {

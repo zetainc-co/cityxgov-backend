@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Post, Body, UseGuards, Delete, Put, UsePipes } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, UseGuards, Delete, Patch, UsePipes } from '@nestjs/common';
 import { ProgramaService } from './programa.service';
-import { ProgramaRequest } from './types/programa.dto';
+import { ProgramaRequest } from './dto/programa.dto';
 import { Roles } from 'src/modules/rol/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
 import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
@@ -31,7 +31,7 @@ export class ProgramaController {
         return this.programaService.create(createProgramaRequest);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @Roles('superadmin', 'admin')
     @UsePipes(ValidateProgramaPipe)
     update(

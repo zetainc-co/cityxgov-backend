@@ -1,13 +1,13 @@
 import {
-    Controller,
     Get,
-    Param,
     Post,
     Body,
-    UseGuards,
+    Patch,
+    Param,
     Delete,
-    Put,
-    UsePipes
+    UsePipes,
+    UseGuards,
+    Controller,
 } from '@nestjs/common';
 import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
 import { MetaResultadoService } from './meta_resultado.service';
@@ -41,7 +41,7 @@ export class MetaResultadoController {
         return this.metaResultadoService.create(createMetaResultadoRequest);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @Roles('superadmin', 'admin')
     @UsePipes(ValidateMetaResultadoPipe)
     update(

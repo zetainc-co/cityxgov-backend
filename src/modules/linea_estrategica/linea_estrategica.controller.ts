@@ -1,9 +1,9 @@
 import {
     Get,
-    Put,
     Body,
     Post,
     Param,
+    Patch,
     Delete,
     UsePipes,
     UseGuards,
@@ -13,7 +13,7 @@ import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
 import { Roles } from 'src/modules/rol/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
 import { LineaEstrategicaService } from './linea_estrategica.service';
-import { CreateLineaEstrategicaRequest } from './dto/linea_estrategica.dto';
+import { LineaEstrategicaRequest } from './dto/linea_estrategica.dto';
 import { ValidateLineaEstrategicaPipe } from './pipes/linea_estrategica.pipe';
 
 @Controller('linea-estrategica')
@@ -38,16 +38,16 @@ export class LineaEstrategicaController {
     @Post()
     @Roles('superadmin', 'admin')
     @UsePipes(ValidateLineaEstrategicaPipe)
-    create(@Body() createRequest: CreateLineaEstrategicaRequest) {
+    create(@Body() createRequest: LineaEstrategicaRequest) {
         return this.lineaEstrategicaService.create(createRequest);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @Roles('superadmin', 'admin')
     @UsePipes(ValidateLineaEstrategicaPipe)
     update(
         @Param('id') id: number,
-        @Body() createRequest: CreateLineaEstrategicaRequest) {
+        @Body() createRequest: LineaEstrategicaRequest) {
         return this.lineaEstrategicaService.update(id, createRequest);
     }
 

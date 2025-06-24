@@ -1,10 +1,10 @@
 import {
     LineaEstrategica,
     LineaEstrategicaResponse,
-    CreateLineaEstrategicaRequest,
+    LineaEstrategicaRequest,
 } from './dto/linea_estrategica.dto';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 
 @Injectable()
 export class LineaEstrategicaService {
@@ -16,7 +16,7 @@ export class LineaEstrategicaService {
             const { data, error } =
                 await this.supabaseService.clientAdmin
                     .from('linea_estrategica')
-                    .select('id, nombre, descripcion, plan_nacional, plan_departamental, created_at, updated_at');
+                    .select('*');
 
             if (error) {
                 throw new InternalServerErrorException('Error al obtener líneas estratégicas: ' + error.message);
@@ -24,15 +24,20 @@ export class LineaEstrategicaService {
 
             return {
                 status: true,
-                message: 'Lineas estratégicas encontradas',
+                message: 'Líneas estratégicas encontradas',
                 data: data as LineaEstrategica[],
-                error,
+                error: null,
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al obtener líneas estratégicas',
-                error: error.message
+                error: error.message,
+                data: []
             }
         }
     }
@@ -48,111 +53,101 @@ export class LineaEstrategicaService {
                 .maybeSingle();
 
             if (error) {
-                throw new InternalServerErrorException('Error al obtener línea estratégica: ' + error.message);
+                throw new InternalServerErrorException('Error al buscar línea estratégica: ' + error.message);
             }
 
             if (!data) {
                 return {
                     status: false,
                     message: `No existe una línea estratégica con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
-            }
-
-            const lineaEstrategica: LineaEstrategica = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                plan_nacional: data.plan_nacional,
-                plan_departamental: data.plan_departamental,
-                created_at: data.created_at,
-                updated_at: data.updated_at
             }
 
             return {
                 status: true,
                 message: 'Línea estratégica encontrada',
-                data: [lineaEstrategica]
+                data: data
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
-                message: 'Error al obtener línea estratégica',
-                error: error.message
+                message: 'Error al buscar línea estratégica',
+                error: error.message,
+                data: []
             }
         }
     }
 
-    //Crea una linea estrategica
-    async create(createRequest: CreateLineaEstrategicaRequest): Promise<LineaEstrategicaResponse> {
+    //Crea una línea estratégica
+    async create(createRequest: LineaEstrategicaRequest): Promise<LineaEstrategicaResponse> {
         try{
-            // Validar si el nombre ya existe
+            // 1. Validar si el nombre ya existe
             const { data: existingLinea, error: validationError } =
                 await this.supabaseService.clientAdmin
                 .from('linea_estrategica')
                 .select('id')
-                .eq('nombre', createRequest.nombre)
+                .eq('nombre', createRequest.nombre.trim())
                 .maybeSingle();
 
             if (validationError) {
-                throw new InternalServerErrorException('Error al validar nombre de línea estratégica');
+                throw new InternalServerErrorException('Error al validar nombre de línea estratégica: ' + validationError.message);
             }
 
             if (existingLinea) {
                 return {
                     status: false,
                     message: 'Ya existe una línea estratégica con este nombre',
-                    error: 'Nombre duplicado'
+                    error: 'Nombre duplicado',
+                    data: []
                 }
             }
 
-            //Crea la linea estrategica
+            // 2. Crear la línea estratégica
             const { data, error } =
             await this.supabaseService.clientAdmin
             .from('linea_estrategica')
-                .insert([{
+                .insert({
                     nombre: createRequest.nombre.trim(),
                     descripcion: createRequest.descripcion?.trim() || null,
                     plan_nacional: createRequest.plan_nacional.trim(),
                     plan_departamental: createRequest.plan_departamental.trim(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select('id, nombre, descripcion, plan_nacional, plan_departamental, created_at, updated_at')
+                })
+                .select('*')
                 .single();
 
             if (error) {
                 throw new InternalServerErrorException('Error al crear línea estratégica: ' + error.message);
             }
 
-            const lineaEstrategicaCreated: LineaEstrategica = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                plan_nacional: data.plan_nacional,
-                plan_departamental: data.plan_departamental,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            }
-
             return {
                 status: true,
                 message: 'Línea estratégica creada correctamente',
-                data: [lineaEstrategicaCreated]
+                data: data
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al crear línea estratégica',
-                error: error.message
+                error: error.message,
+                data: []
             }
         }
     }
 
     // Actualiza una línea estratégica
-    async update(id: number, createRequest: CreateLineaEstrategicaRequest): Promise<LineaEstrategicaResponse> {
+    async update(id: number, updateRequest: LineaEstrategicaRequest): Promise<LineaEstrategicaResponse> {
         try{
-            // Primero verificar si existe
+            // 1. Verificar si existe
             const { data: existingData, error: checkError } =
             await this.supabaseService.clientAdmin
                 .from('linea_estrategica')
@@ -168,93 +163,81 @@ export class LineaEstrategicaService {
                 return {
                     status: false,
                     message: `No existe una línea estratégica con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
 
-            // Validar si el nombre ya existe en otra línea estratégica
+            // 2. Validar si el nombre ya existe en otra línea estratégica
             const { data: existingLinea, error: validationError } =
                 await this.supabaseService.clientAdmin
                 .from('linea_estrategica')
                 .select('id')
-                .eq('nombre', createRequest.nombre)
+                .eq('nombre', updateRequest.nombre.trim())
                 .neq('id', id)
                 .maybeSingle();
 
             if (validationError) {
-                throw new InternalServerErrorException('Error al validar nombre de línea estratégica');
+                throw new InternalServerErrorException('Error al validar nombre de línea estratégica: ' + validationError.message);
             }
 
             if (existingLinea) {
                 return {
                     status: false,
-                    message: 'Ya existe otra línea estratégica con este nombre',
-                    error: 'Nombre duplicado'
+                    message: 'Ya existe una línea estratégica con este nombre',
+                    error: 'Nombre duplicado',
+                    data: []
                 }
             }
 
-            // Verificar si hay cambios
-            const hasChanges =
-                existingData.nombre !== createRequest.nombre ||
-                existingData.descripcion !== createRequest.descripcion ||
-                existingData.plan_nacional !== createRequest.plan_nacional ||
-                existingData.plan_departamental !== createRequest.plan_departamental;
-
-            if (!hasChanges) {
+            // 3. Verificar si hay cambios
+            if (
+                existingData.nombre === updateRequest.nombre.trim() &&
+                existingData.descripcion === updateRequest.descripcion?.trim() &&
+                existingData.plan_nacional === updateRequest.plan_nacional.trim() &&
+                existingData.plan_departamental === updateRequest.plan_departamental.trim()
+            ) {
                 return {
                     status: false,
                     message: 'No se detectaron cambios en la línea estratégica',
                     error: 'Sin cambios',
-                    data: [{
-                        id: existingData.id,
-                        nombre: existingData.nombre,
-                        descripcion: existingData.descripcion,
-                        plan_nacional: existingData.plan_nacional,
-                        plan_departamental: existingData.plan_departamental,
-                        created_at: existingData.created_at,
-                        updated_at: existingData.updated_at
-                    }]
+                    data: existingData
                 }
             }
 
-            // Actualiza la línea estratégica
+            // 4. Actualizar la línea estratégica
             const { data, error } =
             await this.supabaseService.clientAdmin
             .from('linea_estrategica')
             .update({
-                nombre: createRequest.nombre,
-                descripcion: createRequest.descripcion,
-                plan_nacional: createRequest.plan_nacional,
-                plan_departamental: createRequest.plan_departamental
+                nombre: updateRequest.nombre.trim(),
+                descripcion: updateRequest.descripcion?.trim() || null,
+                plan_nacional: updateRequest.plan_nacional.trim(),
+                plan_departamental: updateRequest.plan_departamental.trim()
             })
             .eq('id', id)
-            .select('id, nombre, descripcion, plan_nacional, plan_departamental, created_at, updated_at')
+            .select('*')
             .single();
 
             if (error) {
                 throw new InternalServerErrorException('Error al actualizar línea estratégica: ' + error.message);
             }
 
-            const lineaEstrategicaUpdated: LineaEstrategica = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                plan_nacional: data.plan_nacional,
-                plan_departamental: data.plan_departamental,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            }
-
             return {
                 status: true,
                 message: 'Línea estratégica actualizada correctamente',
-                data: [lineaEstrategicaUpdated]
+                data: data
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al actualizar línea estratégica',
-                error: error.message
+                error: error.message,
+                data: []
             }
         }
     }
@@ -262,7 +245,7 @@ export class LineaEstrategicaService {
     // Elimina una línea estratégica
     async delete(id: number): Promise<LineaEstrategicaResponse> {
         try{
-            // Primero verificar si existe
+            // 1. Verificar si la línea estratégica existe
             const { data: existingData, error: checkError } =
             await this.supabaseService.clientAdmin
                 .from('linea_estrategica')
@@ -278,45 +261,54 @@ export class LineaEstrategicaService {
                 return {
                     status: false,
                     message: `No existe una línea estratégica con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
 
-            // Validar si hay programas asociados
+            // 2. Verificar si está siendo usada por programas
             const { data: programasAsociados, error: programasError } = await this.supabaseService.clientAdmin
                 .from('programa')
                 .select('id, nombre')
-                .eq('linea_estrategica_id', id);
+                .eq('linea_estrategica_id', id)
+                .limit(5);
+
             if (programasError) {
                 throw new InternalServerErrorException('Error al verificar programas asociados: ' + programasError.message);
             }
+
             if (programasAsociados && programasAsociados.length > 0) {
                 const nombres = programasAsociados.map(p => p.nombre).join(', ');
                 return {
                     status: false,
-                    message: `No se puede eliminar la línea estratégica porque está asociada a los siguientes programas: ${nombres}`,
-                    error: 'Relacion encontrada'
+                    message: `No se puede eliminar la línea estratégica porque está siendo usada por ${programasAsociados.length} programa(s): ${nombres}`,
+                    error: 'Línea estratégica en uso por programas',
+                    data: []
                 }
             }
 
-            // Validar si hay metas resultado asociadas
+            // 3. Verificar si está siendo usada por metas de resultado
             const { data: metasAsociadas, error: metasError } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
                 .select('id, nombre')
-                .eq('linea_estrategica_id', id);
+                .eq('linea_estrategica_id', id)
+                .limit(5);
+
             if (metasError) {
                 throw new InternalServerErrorException('Error al verificar metas resultado asociadas: ' + metasError.message);
             }
+
             if (metasAsociadas && metasAsociadas.length > 0) {
                 const nombres = metasAsociadas.map(m => m.nombre).join(', ');
                 return {
                     status: false,
-                    message: `No se puede eliminar la línea estratégica porque está asociada a las siguientes metas de resultado: ${nombres}`,
-                    error: 'Relacion encontrada'
+                    message: `No se puede eliminar la línea estratégica porque está siendo usada por ${metasAsociadas.length} meta(s) de resultado: ${nombres}`,
+                    error: 'Línea estratégica en uso por metas de resultado',
+                    data: []
                 }
             }
 
-            // Elimina la línea estratégica
+            // 4. Eliminar la línea estratégica
             const { error } = await this.supabaseService.clientAdmin
             .from('linea_estrategica')
             .delete()
@@ -328,14 +320,19 @@ export class LineaEstrategicaService {
 
             return {
                 status: true,
-                message: 'Línea estratégica eliminada correctamente',
+                message: `Línea estratégica ${existingData.nombre} ha sido eliminada correctamente`,
                 data: []
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al eliminar línea estratégica',
-                error: error.message
+                error: error.message,
+                data: []
             }
         }
     }

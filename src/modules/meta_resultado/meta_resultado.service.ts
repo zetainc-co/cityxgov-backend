@@ -1,24 +1,26 @@
 import {
     MetaResultadoRequest,
-    FindAllMetaResultadosResponse,
     MetaResultado,
     MetaResultadoResponse
 } from './dto/meta_resultado.dto';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 
 @Injectable()
 export class MetaResultadoService {
     constructor(private supabaseService: SupabaseService) {}
 
-    async findAll(): Promise<FindAllMetaResultadosResponse> {
+    //Obtener todas las metas de resultado
+    async findAll(): Promise<MetaResultadoResponse> {
         try {
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
                 .select('*');
+
             if (error) {
                 throw new InternalServerErrorException('Error al obtener metas de resultado: ' + error.message);
             }
+
             return {
                 status: true,
                 message: 'Metas de resultado encontradas',
@@ -26,6 +28,10 @@ export class MetaResultadoService {
                 error: null,
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al obtener metas de resultado',
@@ -35,6 +41,7 @@ export class MetaResultadoService {
         }
     }
 
+    //Obtener una meta de resultado
     async findOne(id: number): Promise<MetaResultadoResponse> {
         try {
             const { data, error } = await this.supabaseService.clientAdmin
@@ -42,9 +49,11 @@ export class MetaResultadoService {
                 .select('*')
                 .eq('id', id)
                 .maybeSingle();
+
             if (error) {
                 throw new InternalServerErrorException('Error al buscar meta de resultado: ' + error.message);
             }
+
             if (!data) {
                 return {
                     status: false,
@@ -53,12 +62,17 @@ export class MetaResultadoService {
                     data: []
                 }
             }
+
             return {
                 status: true,
                 message: 'Meta de resultado encontrada',
-                data: [data as MetaResultado]
+                data: data
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al buscar meta de resultado',
@@ -70,16 +84,37 @@ export class MetaResultadoService {
 
     async create(createRequest: MetaResultadoRequest): Promise<MetaResultadoResponse> {
         try {
-            // Validar si la meta de resultado existe
+            // 1. Validar que existe la línea estratégica
+            const { data: lineaEstrategica, error: lineaError } = await this.supabaseService.clientAdmin
+                .from('linea_estrategica')
+                .select('id')
+                .eq('id', createRequest.linea_estrategica_id)
+                .maybeSingle();
+
+            if (lineaError) {
+                throw new InternalServerErrorException('Error al validar línea estratégica: ' + lineaError.message);
+            }
+
+            if (!lineaEstrategica) {
+                return {
+                    status: false,
+                    message: `No existe una línea estratégica con el ID ${createRequest.linea_estrategica_id}`,
+                    error: 'Línea estratégica no encontrada',
+                    data: []
+                }
+            }
+
+            // 2. Validar si la meta de resultado existe
             const { data: existingMetaResultado, error: metaResultadoError } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
                 .select('id')
-                .eq('nombre', createRequest.nombre)
+                .eq('nombre', createRequest.nombre.trim())
                 .maybeSingle();
 
             if (metaResultadoError) {
-                throw new InternalServerErrorException('Error al validar nombre de meta resultado');
+                throw new InternalServerErrorException('Error al validar nombre de meta resultado: ' + metaResultadoError.message);
             }
+
             if (existingMetaResultado) {
                 return {
                     status: false,
@@ -89,10 +124,10 @@ export class MetaResultadoService {
                 }
             }
 
-            // Crear meta de resultado
+            // 3. Crear meta de resultado
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
-                .insert([{
+                .insert({
                     nombre: createRequest.nombre.trim(),
                     indicador: createRequest.indicador.trim(),
                     linea_base: createRequest.linea_base.trim(),
@@ -100,36 +135,25 @@ export class MetaResultadoService {
                     meta_cuatrienio: createRequest.meta_cuatrienio.trim(),
                     fuente: createRequest.fuente.trim(),
                     linea_estrategica_id: createRequest.linea_estrategica_id,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select('id, nombre, indicador, linea_base, año_linea_base, meta_cuatrienio, fuente, linea_estrategica_id, created_at, updated_at')
+                })
+                .select('*')
                 .single();
 
             if (error) {
                 throw new InternalServerErrorException('Error al crear meta de resultado: ' + error.message);
             }
 
-            // const metaResultadoCreated: MetaResultado = {
-            //     id: data.id,
-            //     nombre: data.nombre,
-            //     indicador: data.indicador,
-            //     linea_base: data.linea_base,
-            //     año_linea_base: data.año_linea_base,
-            //     meta_cuatrienio: data.meta_cuatrienio,
-            //     fuente: data.fuente,
-            //     linea_estrategica_id: data.linea_estrategica_id,
-            //     created_at: data.created_at,
-            //     updated_at: data.updated_at
-            // }
-
             return {
                 status: true,
                 message: 'Meta de resultado creada correctamente',
-                data: [data as unknown as MetaResultado]
+                data: data
             };
 
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al crear meta de resultado',
@@ -141,7 +165,7 @@ export class MetaResultadoService {
 
     async update(id: number, updateRequest: MetaResultadoRequest): Promise<MetaResultadoResponse> {
         try {
-            // Obtener actual
+            // 1. Obtener actual
             const { data: current, error: currError } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
                 .select('*')
@@ -149,7 +173,7 @@ export class MetaResultadoService {
                 .maybeSingle();
 
             if (currError) {
-                throw new InternalServerErrorException('Error al validar meta de resultado');
+                throw new InternalServerErrorException('Error al verificar meta de resultado: ' + currError.message);
             }
 
             if (!current) {
@@ -160,17 +184,39 @@ export class MetaResultadoService {
                     data: []
                 }
             }
-            // Validar si el nombre ya existe en otro registro
+
+            // 2. Validar que existe la línea estratégica
+            const { data: lineaEstrategica, error: lineaError } = await this.supabaseService.clientAdmin
+                .from('linea_estrategica')
+                .select('id')
+                .eq('id', updateRequest.linea_estrategica_id)
+                .maybeSingle();
+
+            if (lineaError) {
+                throw new InternalServerErrorException('Error al validar línea estratégica: ' + lineaError.message);
+            }
+
+            if (!lineaEstrategica) {
+                return {
+                    status: false,
+                    message: `No existe una línea estratégica con el ID ${updateRequest.linea_estrategica_id}`,
+                    error: 'Línea estratégica no encontrada',
+                    data: []
+                }
+            }
+
+            // 3. Validar si el nombre ya existe en otro registro
             const { data: duplicateName, error: nameError } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
                 .select('id')
-                .eq('nombre', updateRequest.nombre)
+                .eq('nombre', updateRequest.nombre.trim())
                 .neq('id', id)
                 .maybeSingle();
 
             if (nameError) {
-                throw new InternalServerErrorException('Error al validar nombre duplicado');
+                throw new InternalServerErrorException('Error al validar nombre duplicado: ' + nameError.message);
             }
+
             if (duplicateName) {
                 return {
                     status: false,
@@ -179,36 +225,35 @@ export class MetaResultadoService {
                     data: []
                 }
             }
-            // Verificar cambios
-            const hasChanges =
-                current.nombre !== updateRequest.nombre.trim() ||
-                current.indicador !== updateRequest.indicador.trim() ||
-                current.linea_base !== updateRequest.linea_base.trim() ||
-                current.año_linea_base !== updateRequest.año_linea_base ||
-                current.meta_cuatrienio !== updateRequest.meta_cuatrienio.trim() ||
-                current.fuente !== updateRequest.fuente.trim() ||
-                current.linea_estrategica_id !== updateRequest.linea_estrategica_id;
 
-            if (!hasChanges) {
+            // 4. Verificar cambios
+            if (
+                current.nombre === updateRequest.nombre.trim() &&
+                current.indicador === updateRequest.indicador.trim() &&
+                current.linea_base === updateRequest.linea_base.trim() &&
+                current.año_linea_base === updateRequest.año_linea_base &&
+                current.meta_cuatrienio === updateRequest.meta_cuatrienio.trim() &&
+                current.fuente === updateRequest.fuente.trim() &&
+                current.linea_estrategica_id === updateRequest.linea_estrategica_id
+            ) {  
                 return {
                     status: false,
                     message: 'No se detectaron cambios en la meta de resultado',
                     error: 'Sin cambios',
-                    data: [current as MetaResultado]
+                    data: current
                 }
             }
-
-            // Actualizar
+            // 5. Actualizar
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
                 .update({
                     nombre: updateRequest.nombre.trim(),
                     indicador: updateRequest.indicador.trim(),
                     linea_base: updateRequest.linea_base.trim(),
+                    año_linea_base: updateRequest.año_linea_base,
                     meta_cuatrienio: updateRequest.meta_cuatrienio.trim(),
                     fuente: updateRequest.fuente.trim(),
                     linea_estrategica_id: updateRequest.linea_estrategica_id,
-                    updated_at: new Date().toISOString()
                 })
                 .eq('id', id)
                 .select('*')
@@ -225,6 +270,10 @@ export class MetaResultadoService {
             };
 
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al actualizar meta de resultado',
@@ -236,15 +285,17 @@ export class MetaResultadoService {
 
     async delete(id: number): Promise<MetaResultadoResponse> {
         try {
-            // Verificar existencia
+            // 1. Verificar si la meta de resultado existe
             const { data: existing, error: existError } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
-                .select('id')
+                .select('*')
                 .eq('id', id)
                 .maybeSingle();
+
             if (existError) {
                 throw new InternalServerErrorException('Error al verificar meta de resultado: ' + existError.message);
             }
+
             if (!existing) {
                 return {
                     status: false,
@@ -253,20 +304,49 @@ export class MetaResultadoService {
                     data: []
                 }
             }
-            // Eliminar
+
+            // 2. Verificar si está siendo usado en metas_resultado_producto
+            const { data: metasProducto, error: metasError } = await this.supabaseService.clientAdmin
+                .from('metas_resultado_producto')
+                .select('meta_producto_id')
+                .eq('meta_resultado_id', id)
+                .limit(1);
+
+            if (metasError) {
+                throw new InternalServerErrorException(
+                    'Error al verificar uso de la meta de resultado: ' + metasError.message,
+                );
+            }
+
+            if (metasProducto && metasProducto.length > 0) {
+                return {
+                    status: false,
+                    message: 'No se puede eliminar la meta de resultado porque está siendo usada en metas de producto',
+                    error: 'Meta de resultado en uso',
+                    data: []
+                };
+            }
+
+            // 3. Eliminar
             const { error } = await this.supabaseService.clientAdmin
                 .from('meta_resultado')
                 .delete()
                 .eq('id', id);
+
             if (error) {
                 throw new InternalServerErrorException('Error al eliminar meta de resultado: ' + error.message);
             }
+
             return {
                 status: true,
-                message: 'Meta de resultado eliminada correctamente',
+                message: `Meta de resultado ${existing.nombre} ha sido eliminada correctamente`,
                 data: []
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al eliminar meta de resultado',

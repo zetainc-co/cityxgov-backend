@@ -21,13 +21,6 @@ export interface MetaResultadoRequest {
     fuente: string;
 }
 
-export interface FindAllMetaResultadosResponse {
-    status: boolean;
-    message: string;
-    data: MetaResultado[];
-    error?: any;
-}
-
 export interface MetaResultadoResponse {
     status: boolean;
     message: string;

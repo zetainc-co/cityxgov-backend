@@ -1,16 +1,16 @@
 import {
-    Put,
     Get,
     Post,
     Body,
     Param,
+    Patch,
     Delete,
     UsePipes,
     UseGuards,
     Controller,
 } from '@nestjs/common';
 import { AreaService } from './area.service';
-import { CreateAreaRequest } from './dto/area.dto';
+import { AreaRequest } from './dto/area.dto';
 import { ValidateAreaPipe } from './pipe/area.pipe';
 import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
 import { Roles } from 'src/modules/rol/decorator/roles.decorator';
@@ -38,16 +38,16 @@ export class AreaController {
     @Post()
     @Roles('superadmin')
     @UsePipes(ValidateAreaPipe)
-    create(@Body() createRequest: CreateAreaRequest) {
+    create(@Body() createRequest: AreaRequest) {
         return this.areaService.create(createRequest);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @Roles('superadmin')
     @UsePipes(ValidateAreaPipe)
     update(
         @Param('id') id: number,
-        @Body() updateAreaRequest: CreateAreaRequest) {
+        @Body() updateAreaRequest: AreaRequest) {
         return this.areaService.update(id, updateAreaRequest);
     }
 

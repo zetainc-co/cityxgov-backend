@@ -3,34 +3,29 @@ import {
     Body,
     Post,
     Param,
-    UseGuards,
-    Controller,
-    HttpStatus,
-    HttpCode,
     Patch,
     Delete,
-    UsePipes,
-    ValidationPipe,
+    UseGuards,
+    Controller,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { UsuariosGuard } from './guard/usuarios.guard';
 import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
 import { Roles } from 'src/modules/rol/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
-import { NuevoUsuario, ActualizarUsuario, ActualizarEstadoUsuario } from './dto/usuarios.dto';
+import { 
+    UsuarioRequest, 
+    ChangePasswordDto,
+    UsuarioUpdateRequest, 
+    ActualizarEstadoUsuario, 
+} from './dto/usuarios.dto';
+import { ValidateUsuarioPipe } from './pipes/usuarios.pipe';
+import { PasswordValidationPipe } from './pipes/password.pipe';
 
 @Controller('usuarios')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@UsePipes(new ValidationPipe({ transform: true }))
 export class UsuariosController {
     constructor(private readonly usuariosService: UsuariosService) { }
-
-    // Crear un nuevo usuario
-    @Post()
-    @Roles('superadmin')
-    async create(@Body() createRequest: NuevoUsuario) {
-        return await this.usuariosService.create(createRequest);
-    }
 
     // Obtener todos los usuarios
     @Get()
@@ -39,47 +34,55 @@ export class UsuariosController {
         return await this.usuariosService.findAll();
     }
 
-    // Obtener todos los usuarios  con areas
-    // @Get('usuarios-areas')
-    // @Roles('admin', 'superadmin')
-    // async findAllUsuariosAreas() {
-    //     return await this.usuariosService.findAllUsuariosAreas();
-    // }
-
-    // Obtener un usuario por su identificación
-    @Get(':identificacion')
+    // Obtener un usuario por su ID
+    @Get(':id')
     @Roles('admin', 'superadmin')
-    async findOne(@Param('identificacion') identificacion: number) {
-        return await this.usuariosService.findOne(identificacion);
+    async findOne(@Param('id', ValidateUsuarioPipe) id: number) {
+        return await this.usuariosService.findOne(id);
     }
 
+    // Crear un nuevo usuario (SE REQUIERE ÁREA Y ROL)
+    @Post()
+    @Roles('superadmin')
+    async create(@Body(ValidateUsuarioPipe) createRequest: UsuarioRequest) {
+        return await this.usuariosService.create(createRequest);
+    }
 
-    // Actualizar un usuario por su identificación
-    @Patch(':identificacion')
+    // Actualizar un usuario por su ID (SE PUEDE INCLUIR CAMBIO DE ÁREA Y ROL)
+    @Patch(':id')
     @UseGuards(UsuariosGuard)
     async update(
-        @Param('identificacion') identificacion: number,
-        @Body() updateDto: ActualizarUsuario,
+        @Param('id', ValidateUsuarioPipe) id: number,
+        @Body(ValidateUsuarioPipe) updateRequest: UsuarioUpdateRequest,
     ) {
-        return await this.usuariosService.update(identificacion, updateDto);
+        return await this.usuariosService.update(id, updateRequest);
     }
 
-    // Actualizar el estado de un usuario
-    @Patch(':identificacion/estado')
+    // Actualizar el estado de un usuario (SE PUEDE ACTIVAR O DESACTIVAR)
+    @Patch('estado/:id')
     @Roles('superadmin', 'admin')
     async actualizarEstado(
-        @Param('identificacion') identificacion: number,
+        @Param('id', ValidateUsuarioPipe) id: number,
         @Body() dtoEstado: ActualizarEstadoUsuario,
     ) {
-        return await this.usuariosService.actualizarEstado(identificacion, dtoEstado);
+        return await this.usuariosService.actualizarEstado(id, dtoEstado);
     }
 
-    // Eliminar un usuario (propio usuario o superadmin)
-    @Delete(':identificacion')
+    // Cambiar la contraseña de un usuario (SE REQUIERE CONTRASEÑA ACTUAL)
+    @Patch('cambiar-clave/:id')
+    async changePassword(
+        @Param('id', ValidateUsuarioPipe) id: number,
+        @Body(PasswordValidationPipe) dto: ChangePasswordDto,
+    ) {
+        return await this.usuariosService.changePassword(id, dto);
+    }
+
+    // Eliminar un usuario (ELIMINA USUARIO + ASIGNACIONES EN CASCADE)
+    @Delete(':id')
     @UseGuards(UsuariosGuard)
     async delete(
-        @Param('identificacion') identificacion: number,
+        @Param('id', ValidateUsuarioPipe) id: number,
     ) {
-        return await this.usuariosService.delete(identificacion);
+        return await this.usuariosService.delete(id);
     }
 }

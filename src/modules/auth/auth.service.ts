@@ -1,14 +1,14 @@
 import {
     Injectable,
-    UnauthorizedException,
     BadRequestException,
+    UnauthorizedException,
     InternalServerErrorException,
 } from '@nestjs/common';
-import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { LoginDto } from 'src/modules/auth/types/auth.type';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
+import { LoginDto } from 'src/modules/auth/types/auth.type';
 import { EmailService } from 'src/config/email/email.service';
+import { SupabaseService } from 'src/config/supabase/supabase.service';
 
 @Injectable()
 export class AuthService {
@@ -40,6 +40,7 @@ export class AuthService {
                 data: [],
             });
         }
+        
         const isPasswordValid = await bcrypt.compare(contrasena, user.contrasena);
 
         if (!isPasswordValid) {

@@ -1,13 +1,13 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { ProgramaRequest, FindAllProgramasResponse, Programa, ProgramaResponse } from './types/programa.dto';
+import { ProgramaRequest, ProgramaResponse } from './dto/programa.dto';
 
 @Injectable()
 export class ProgramaService {
     constructor(private supabaseService: SupabaseService) { }
 
     //Obtiene todos los programas
-    async findAll(): Promise<FindAllProgramasResponse> {
+    async findAll(): Promise<ProgramaResponse> {
         try {
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('programa')
@@ -20,10 +20,14 @@ export class ProgramaService {
             return {
                 status: true,
                 message: 'Programas encontrados',
-                data: data as Programa[],
-                error,
+                data: data,
+                error: null,
             };
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al obtener programas',
@@ -50,25 +54,21 @@ export class ProgramaService {
                 return {
                     status: false,
                     message: `No existe un programa con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
-            }
-
-            const programa: Programa = {
-                id: data.id,
-                linea_estrategica_id: data.linea_estrategica_id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                created_at: data.created_at,
-                updated_at: data.updated_at
             }
 
             return {
                 status: true,
                 message: 'Programa encontrado',
-                data: [programa]
+                data: [data]
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al buscar programa',
@@ -81,57 +81,71 @@ export class ProgramaService {
     //Crea un programa
     async create(createRequest: ProgramaRequest): Promise<ProgramaResponse> {
         try {
-            //Validar si el programa existe
+            // 1. Validar que existe la línea estratégica
+            const { data: lineaEstrategica, error: lineaError } = await this.supabaseService.clientAdmin
+                .from('linea_estrategica')
+                .select('id')
+                .eq('id', createRequest.linea_estrategica_id)
+                .maybeSingle();
+
+            if (lineaError) {
+                throw new InternalServerErrorException('Error al validar línea estratégica: ' + lineaError.message);
+            }
+
+            if (!lineaEstrategica) {
+                return {
+                    status: false,
+                    message: `No existe una línea estratégica con el ID ${createRequest.linea_estrategica_id}`,
+                    error: 'Línea estratégica no encontrada',
+                    data: []
+                }
+            }
+
+            // 2. Validar si el programa existe
             const { data: existingPrograma, error: programaError } = await this.supabaseService.clientAdmin
                 .from('programa')
                 .select('id')
-                .eq('nombre', createRequest.nombre)
+                .eq('nombre', createRequest.nombre.trim())
                 .maybeSingle();
 
             if (programaError) {
-                throw new InternalServerErrorException('Error al validar nombre de programa');
+                throw new InternalServerErrorException('Error al validar nombre de programa: ' + programaError.message);
             }
+
             if (existingPrograma) {
                 return {
                     status: false,
                     message: 'Ya existe un programa con este nombre',
-                    error: 'Nombre duplicado'
+                    error: 'Nombre duplicado',
+                    data: []
                 }
             }
 
-
-            //Crea el programa
+            // 3. Crear el programa
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('programa')
-                .insert([{
+                .insert({
                     nombre: createRequest.nombre.trim(),
                     descripcion: createRequest.descripcion?.trim() || null,
                     linea_estrategica_id: createRequest.linea_estrategica_id,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select('id, nombre, descripcion, linea_estrategica_id, created_at, updated_at')
+                })
+                .select('*')
                 .single();
 
             if (error) {
                 throw new InternalServerErrorException('Error al crear programa: ' + error.message);
             }
 
-            const programaCreated: Programa = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                linea_estrategica_id: data.linea_estrategica_id,
-                created_at: data.created_at,
-                updated_at: data.updated_at
-            }
-
             return {
                 status: true,
                 message: 'Programa creado correctamente',
-                data: [programaCreated]
+                data: [data]
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al crear programa',
@@ -145,68 +159,82 @@ export class ProgramaService {
     async update(id: number, createRequest: ProgramaRequest): Promise<ProgramaResponse> {
         try {
             // 1. Obtener el programa actual (todos los campos)
-            const { data: currentPrograma, error: programaError } = await this.supabaseService.clientAdmin
+            const { data, error } = await this.supabaseService.clientAdmin
                 .from('programa')
                 .select('*')
                 .eq('id', id)
                 .maybeSingle();
 
-            if (programaError) {
-                throw new InternalServerErrorException('Error al validar nombre de programa');
+            if (error) {
+                throw new InternalServerErrorException('Error al verificar programa: ' + error.message);
             }
 
-            if (!currentPrograma) {
+            if (!data) {
                 return {
                     status: false,
                     message: `No existe un programa con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
 
-            // 2. Validar si el nombre ya existe en otro programa
-            const { data: duplicatePrograma, error: duplicateError } = await this.supabaseService.clientAdmin
+            // 2. Validar que existe la línea estratégica
+            const { data: lineaEstrategica, error: lineaError } = await this.supabaseService.clientAdmin
+                .from('linea_estrategica')
+                .select('id')
+                .eq('id', createRequest.linea_estrategica_id)
+                .maybeSingle();
+
+            if (lineaError) {
+                throw new InternalServerErrorException('Error al validar línea estratégica: ' + lineaError.message);
+            }
+
+            if (!lineaEstrategica) {
+                return {
+                    status: false,
+                    message: `No existe una línea estratégica con el ID ${createRequest.linea_estrategica_id}`,
+                    error: 'Línea estratégica no encontrada',
+                    data: []
+                }
+            }
+
+            // 3. Validar si el nombre ya existe en otro programa
+            const { data: existingPrograma, error: programaError } = await this.supabaseService.clientAdmin
                 .from('programa')
                 .select('id')
-                .eq('nombre', createRequest.nombre)
+                .eq('nombre', createRequest.nombre.trim())
                 .neq('id', id)
                 .maybeSingle();
 
-            if (duplicateError) {
-                throw new InternalServerErrorException('Error al validar nombre de programa');
+            if (programaError) {
+                throw new InternalServerErrorException('Error al validar nombre de programa: ' + programaError.message);
             }
 
-            if (duplicatePrograma) {
+            if (existingPrograma) {
                 return {
                     status: false,
                     message: 'Ya existe un programa con este nombre',
-                    error: 'Nombre duplicado'
+                    error: 'Nombre duplicado',
+                    data: []
                 }
             }
 
-            // 3. Verificar si hay cambios
-            const hasChanges =
-                currentPrograma.nombre !== createRequest.nombre.trim() ||
-                currentPrograma.descripcion !== createRequest.descripcion.trim() ||
-                currentPrograma.linea_estrategica_id !== createRequest.linea_estrategica_id;
-
-            if (!hasChanges) {
+            // 4. Verificar si hay cambios
+            if (
+                data.nombre === createRequest.nombre.trim() && 
+                data.descripcion === createRequest.descripcion?.trim() && 
+                data.linea_estrategica_id === createRequest.linea_estrategica_id
+            ) {
                 return {
                     status: false,
                     message: 'No se detectaron cambios en el programa',
                     error: 'Sin cambios',
-                    data: [{
-                        id: currentPrograma.id,
-                        nombre: currentPrograma.nombre,
-                        descripcion: currentPrograma.descripcion,
-                        linea_estrategica_id: currentPrograma.linea_estrategica_id,
-                        created_at: currentPrograma.created_at,
-                        updated_at: currentPrograma.updated_at
-                    }]
+                    data: [data]
                 }
             }
 
-            //Actualiza el programa
-            const { data, error } = await this.supabaseService.clientAdmin
+            // 5. Actualizar el programa
+            const { data: updatedData, error: updatedError } = await this.supabaseService.clientAdmin
                 .from('programa')
                 .update({
                     nombre: createRequest.nombre.trim(),
@@ -214,28 +242,23 @@ export class ProgramaService {
                     linea_estrategica_id: createRequest.linea_estrategica_id,
                 })
                 .eq('id', id)
-                .select('id, nombre, descripcion, linea_estrategica_id, created_at, updated_at')
+                .select('*')
                 .single();
 
-            if (error) {
-                throw new InternalServerErrorException('Error al actualizar programa: ' + error.message);
-            }
-
-            const programaUpdated: Programa = {
-                id: data.id,
-                nombre: data.nombre,
-                descripcion: data.descripcion,
-                linea_estrategica_id: data.linea_estrategica_id,
-                created_at: data.created_at,
-                updated_at: data.updated_at
+            if (updatedError) {
+                throw new InternalServerErrorException('Error al actualizar programa: ' + updatedError.message);
             }
 
             return {
                 status: true,
                 message: 'Programa actualizado correctamente',
-                data: [programaUpdated]
+                data: [updatedData]
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al actualizar programa',
@@ -245,44 +268,47 @@ export class ProgramaService {
         }
     }
 
-
     async delete(id: number): Promise<ProgramaResponse> {
         try {
-            //Verificar si el programa existe
-            const { data: existingPrograma, error: programaError } = await this.supabaseService.clientAdmin
+            // 1. Verificar si el programa existe
+            const { data, error } = await this.supabaseService.clientAdmin
                 .from('programa')
-                .select('id')
+                .select('*')
                 .eq('id', id)
                 .maybeSingle();
 
-            if (programaError) {
-                throw new InternalServerErrorException('Error al verificar programa: ' + programaError.message);
+            if (error) {
+                throw new InternalServerErrorException('Error al verificar programa: ' + error.message);
             }
 
-            if (!existingPrograma) {
+            if (!data) {
                 return {
                     status: false,
                     message: `No existe un programa con el ID ${id}`,
-                    error: 'ID no encontrado'
+                    error: 'ID no encontrado',
+                    data: []
                 }
             }
-
-            //Elimina el programa
-            const { error } = await this.supabaseService.clientAdmin
+            // 2. Eliminar el programa
+            const { error: deleteError } = await this.supabaseService.clientAdmin
                 .from('programa')
                 .delete()
                 .eq('id', id);
 
-            if (error) {
-                throw new InternalServerErrorException('Error al eliminar programa: ' + error.message);
+            if (deleteError) {
+                throw new InternalServerErrorException('Error al eliminar programa: ' + deleteError.message);
             }
 
             return {
                 status: true,
-                message: 'Programa eliminado correctamente',
+                message: `Programa ${data.nombre} ha sido eliminado correctamente`,
                 data: []
             }
         } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             return {
                 status: false,
                 message: 'Error al eliminar programa',

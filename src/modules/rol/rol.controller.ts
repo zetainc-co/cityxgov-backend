@@ -1,6 +1,6 @@
 import {
     Get,
-    Put,
+    Patch,
     Body,
     Post,
     Param,
@@ -10,8 +10,8 @@ import {
     Controller,
 } from '@nestjs/common';
 import { RolService } from './rol.service';
+import { RoleRequest } from './dto/rol.dto';
 import { ValidateRole } from './pipes/rol.pipe';
-import { CreateRoleRequest } from './dto/rol.dto';
 import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
 import { Roles } from 'src/modules/rol/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
@@ -38,16 +38,16 @@ export class RolController {
     @Post()
     @Roles('superadmin')
     @UsePipes(ValidateRole)
-    create(@Body() createRequest: CreateRoleRequest) {
+    create(@Body() createRequest: RoleRequest) {
         return this.rolService.create(createRequest);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @Roles('superadmin')
     @UsePipes(ValidateRole)
     update(
         @Param('id') id: number,
-        @Body() updateRoleRequest: CreateRoleRequest
+        @Body() updateRoleRequest: RoleRequest
     ) {
         return this.rolService.update(id, updateRoleRequest);
     }
