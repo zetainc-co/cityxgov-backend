@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtStrategy } from '../../common/strategies/jwt.strategy';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuthService } from './auth.service';
 import { SupabaseModule } from '../../config/supabase/supabase.module';
 import { AuthController } from './auth.controller';
-// import { EmailModule } from '../../config/email/email.module';
+import { EmailService } from '../../config/email/email.service';
 @Module({
   imports: [
     JwtModule.registerAsync({
@@ -17,10 +17,9 @@ import { AuthController } from './auth.controller';
       inject: [ConfigService],
     }),
     SupabaseModule,
-    // EmailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, EmailService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

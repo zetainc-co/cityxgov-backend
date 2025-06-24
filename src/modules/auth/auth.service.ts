@@ -1,325 +1,358 @@
 import {
-  Injectable,
-  UnauthorizedException,
-  BadRequestException,
-  InternalServerErrorException,
+    Injectable,
+    BadRequestException,
+    UnauthorizedException,
+    InternalServerErrorException,
 } from '@nestjs/common';
-import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { LoginDto } from 'src/types/auth.type';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-// import { EmailService } from 'src/config/email/email.service';
+import { LoginDto } from 'src/modules/auth/types/auth.type';
+import { EmailService } from 'src/config/email/email.service';
+import { SupabaseService } from 'src/config/supabase/supabase.service';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private supabaseService: SupabaseService,
-    // private emailService: EmailService,
-  ) {}
+    constructor(
+        private supabaseService: SupabaseService,
+        private emailService: EmailService,
+    ) { }
 
-  async validateUser(email: string, password: string) {
-    // Buscar usuario por email
-    const { data: user, error } = await this.supabaseService.client
-      .from('users_profile')
-      .select('*')
-      .eq('email', email)
-      .single();
+    async validateUser(correo: string, contrasena: string) {
+        // Buscar usuario por correo
+        const { data: user, error } = await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .select('*')
+            .eq('correo', correo)
+            .single();
 
-    console.log('user', user);
-
-    if (error || !user) {
-      throw new UnauthorizedException('Credenciales incorrectas');
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales incorrectas');
-    }
-
-    const { password: _, ...result } = user;
-    return result;
-  }
-
-  async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-
-    const token = jwt.sign(
-      { id: user.identification, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '24h' },
-    );
-
-    await this.supabaseService.client
-      .from('users_profile')
-      .update({ token })
-      .eq('email', user.email);
-
-    return {
-      status: true,
-      message: 'Login exitoso',
-      data: {
-        user: {
-          email: user.email,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          role: user.role,
-          identification: user.identification,
-          phone: user.phone,
-        },
-        token,
-      },
-    };
-  }
-
-  async logout(userId: number): Promise<{ message: string }> {
-    const { error } = await this.supabaseService.client
-      .from('users_profile')
-      .update({ token: null })
-      .eq('identification', userId);
-
-    if (error) {
-      throw new UnauthorizedException('Error al cerrar sesión');
-    }
-
-    return {
-      message: 'Sesión cerrada correctamente',
-    };
-  }
-
-  async passwordRecovery(email: string): Promise<{ message: string }> {
-    const { data, error } = await this.supabaseService.client
-      .from('users_profile')
-      .select('identification, email, first_name, last_name')
-      .eq('email', email)
-      .single();
-
-    if (error || !data) {
-      throw new BadRequestException('Correo electrónico no encontrado');
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    const otpExpired = new Date();
-    otpExpired.setMinutes(otpExpired.getMinutes() + 5);
-
-    // Actualizar en la base de datos
-    const { error: updateError } = await this.supabaseService.client
-      .from('users_profile')
-      .update({
-        otp: otp,
-        otp_expired: otpExpired.toISOString(),
-      })
-      .eq('email', email)
-      .select()
-      .single();
-
-    if (updateError) {
-      throw new BadRequestException(
-        'Error al generar el código de recuperación',
-      );
-    }
-
-    // Enviar correo con el código OTP
-    // await this.emailService.sendPasswordRecoveryEmail(email, otp);
-
-    return {
-      message: 'Se ha enviado un código de verificación a tu correo',
-    };
-  }
-
-  async validateOtp(email: string, otp: string) {
-    const { data: user, error } = await this.supabaseService.client
-      .from('users_profile')
-      .select('identification, email, role, otp, otp_expired')
-      .eq('email', email)
-      .single();
-
-    if (error || !user) {
-      throw new BadRequestException('Correo electrónico no encontrado');
-    }
-
-    const now = new Date();
-    const expiration = new Date(user.otp_expired);
-
-    if (now > expiration) {
-      throw new BadRequestException(
-        'El código ha expirado, por favor solicite un nuevo código',
-      );
-    }
-
-    if (user.otp !== otp) {
-      throw new BadRequestException(
-        'El código no es válido, por favor ingrese un código válido',
-      );
-    }
-
-    const { error: updateError } = await this.supabaseService.client
-      .from('users_profile')
-      .update({
-        otp: null,
-        otp_expired: null,
-      })
-      .eq('email', email);
-
-    if (updateError) {
-      throw new BadRequestException('Error al validar el código');
-    }
-
-    const resetToken = jwt.sign(
-      {
-        id: user.identification,
-        email: user.email,
-        role: user.role,
-        type: 'password_reset',
-      },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '2m' },
-    );
-
-    return {
-      message: 'Código validado correctamente',
-      resetToken,
-    };
-  }
-
-  async resetPassword(token: string, newPassword: string) {
-    try {
-      if (!token) {
-        throw new UnauthorizedException({
-          status: false,
-          message: 'Token no proporcionado',
-          error: 'TOKEN_MISSING',
-          statusCode: 401,
-        });
-      }
-
-      let decoded;
-      try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
-      } catch (error) {
-        if (error instanceof jwt.TokenExpiredError) {
-          throw new UnauthorizedException({
-            status: false,
-            message: 'El token ha expirado, solicite uno nuevo',
-            error: 'TOKEN_EXPIRED',
-            statusCode: 401,
-          });
-        }
-        if (error instanceof jwt.JsonWebTokenError) {
-          if (error.message === 'jwt malformed') {
+        if (error || !user) {
             throw new UnauthorizedException({
-              status: false,
-              message: 'Formato de token inválido',
-              error: 'TOKEN_MALFORMED',
-              statusCode: 401,
+                status: false,
+                message: 'No existe un usuario con el correo electrónico proporcionado',
+                data: [],
             });
-          }
-          if (error.message === 'invalid signature') {
-            throw new UnauthorizedException({
-              status: false,
-              message: 'Token no válido',
-              error: 'INVALID_SIGNATURE',
-              statusCode: 401,
-            });
-          }
         }
-        throw new UnauthorizedException({
-          status: false,
-          message: 'Token inválido',
-          error: 'INVALID_TOKEN',
-          statusCode: 401,
-        });
-      }
 
-      if (decoded.type !== 'password_reset') {
-        throw new UnauthorizedException({
-          status: false,
-          message: 'Token no válido para cambio de contraseña',
-          error: 'INVALID_TOKEN_TYPE',
-          statusCode: 401,
-        });
-      }
+        if (!user.activo) {
+            throw new UnauthorizedException({
+                status: false,
+                message: 'Su cuenta se encuentra inactiva, por favor contacte al administrador',
+                data: [],
+            });
+        }
+        
+        const isPasswordValid = await bcrypt.compare(contrasena, user.contrasena);
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+        if (!isPasswordValid) {
+            throw new UnauthorizedException({
+                status: false,
+                message: 'Credenciales incorrectas',
+                data: [],
+            });
+        }
 
-      const { data: user, error } = await this.supabaseService.client
-        .from('users_profile')
-        .update({
-          password: hashedPassword,
-          token: null,
-        })
-        .eq('identification', decoded.id)
-        .select('email, first_name, last_name')
-        .single();
-
-      if (error) {
-        throw new BadRequestException({
-          status: false,
-          message: 'Error al actualizar la contraseña',
-          error: 'UPDATE_ERROR',
-          statusCode: 400,
-        });
-      }
-
-      // Enviar correo de confirmación de cambio de contraseña
-      // await this.emailService.sendPasswordChangedEmail({
-      //   firstName: user.first_name,
-      //   lastName: user.last_name,
-      //   email: user.email,
-      // });
-
-      return {
-        status: true,
-        message: 'Contraseña actualizada correctamente',
-        statusCode: 200,
-      };
-    } catch (error) {
-      if (error.response) {
-        throw error;
-      }
-      throw new InternalServerErrorException({
-        status: false,
-        message: 'Error interno del servidor',
-        error: 'INTERNAL_SERVER_ERROR',
-        statusCode: 500,
-      });
+        const { contrasena: _, ...result } = user;
+        return result;
     }
-  }
 
-  async changePassword(userId: number, newPassword: string) {
-    try {
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+    async login(loginDto: LoginDto) {
+        const user = await this.validateUser(loginDto.correo, loginDto.contrasena);
 
-      const { error: updateError } = await this.supabaseService.client
-        .from('users_profile')
-        .update({ password: hashedPassword })
-        .eq('identification', userId);
+        // Obtener roles desde usuario_area
+        const { data: rolesData, error: rolesError } = await this.supabaseService.clientAdmin
+            .from('usuario_area')
+            .select('rol:rol_id(nombre)')
+            .eq('usuario_id', user.id);
 
-      if (updateError) {
-        throw new BadRequestException({
-          status: false,
-          message: 'Error al actualizar la contraseña',
-          error: 'UPDATE_ERROR',
-          statusCode: 400,
-        });
-      }
+        if (rolesError) {
+            throw new InternalServerErrorException({
+                status: false,
+                message: 'Error al obtener roles del usuario',
+                data: [],
+            });
+        }
 
-      return {
-        status: true,
-        message: 'Contraseña actualizada correctamente',
-        statusCode: 200,
-      };
-    } catch (error) {
-      if (error.response) {
-        throw error;
-      }
-      throw new InternalServerErrorException({
-        status: false,
-        message: 'Error interno del servidor',
-        error: 'INTERNAL_SERVER_ERROR',
-        statusCode: 500,
-      });
+        const roles = rolesData ? rolesData.map((ua: any) => ua.rol?.nombre).filter(Boolean) : [];
+        const token = jwt.sign(
+            { id: user.identificacion, roles },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '24h' },
+        );
+
+        await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .update({ token })
+            .eq('correo', user.correo);
+
+        return {
+            status: true,
+            message: 'Login exitoso',
+            data: {
+                user: {
+                    email: user.correo,
+                    nombre: user.nombre,
+                    apellido: user.apellido,
+                    identificacion: user.identificacion,
+                    telefono: user.telefono,
+                    roles,
+                    avatar: user.avatar,
+                },
+                token,
+            },
+        };
     }
-  }
+
+    async logout(identificacion: number) {
+        const { error } = await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .update({ token: null })
+            .eq('identificacion', identificacion);
+
+        if (error) {
+            throw new UnauthorizedException({
+                status: false,
+                message: 'Error al cerrar sesión',
+                data: [],
+            });
+        }
+
+        return {
+            status: true,
+            message: 'Sesión cerrada correctamente',
+            data: [],
+        };
+    }
+
+    async passwordRecovery(correo: string) {
+        const { data, error } = await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .select('identificacion, correo, nombre, apellido')
+            .eq('correo', correo)
+            .single();
+
+        if (error || !data) {
+            throw new BadRequestException({
+                status: false,
+                message: 'Correo electrónico no encontrado',
+                data: [],
+            });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        const otpExpired = new Date();
+        otpExpired.setMinutes(otpExpired.getMinutes() + 5);
+
+        // Actualizar en la base de datos
+        const { error: updateError } = await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .update({
+                otp: otp,
+                otp_expired: otpExpired.toISOString(),
+            })
+            .eq('correo', correo)
+            .select()
+            .single();
+
+        if (updateError) {
+            throw new BadRequestException({
+                status: false,
+                message: 'Error al generar el código de recuperación',
+                data: [],
+            });
+        }
+
+        // Enviar correo con el código OTP
+        await this.emailService.sendPasswordRecoveryEmail(data.correo, otp);
+
+        return {
+            status: true,
+            message: 'Se ha enviado un código de verificación a tu correo',
+            data: [],
+        };
+    }
+
+    async validateOtp(correo: string, otp: string) {
+        const { data: user, error } = await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .select('identificacion, correo, roles, otp, otp_expired')
+            .eq('correo', correo)
+            .single();
+
+        if (error || !user) {
+            throw new BadRequestException({
+                status: false,
+                message: 'Correo electrónico no encontrado',
+                data: [],
+            });
+        }
+
+        const now = new Date();
+        const expiration = new Date(user.otp_expired);
+
+        if (now > expiration) {
+            throw new BadRequestException({
+                status: false,
+                message: 'El código ha expirado, por favor solicite un nuevo código',
+                data: [],
+            });
+        }
+
+        if (user.otp !== otp) {
+            throw new BadRequestException({
+                status: false,
+                message: 'El código no es válido, por favor ingrese un código válido',
+                data: [],
+            });
+        }
+
+        const { error: updateError } = await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .update({
+                otp: null,
+                otp_expired: null,
+            })
+            .eq('correo', correo);
+
+        if (updateError) {
+            throw new BadRequestException({
+                status: false,
+                message: 'Error al validar el código',
+                data: [],
+            });
+        }
+
+        const resetToken = jwt.sign(
+            {
+                id: user.identificacion,
+                correo: user.correo,
+                roles: user.roles,
+                type: 'password_reset',
+            },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '2m' },
+        );
+
+        return {
+            status: true,
+            message: 'Código validado correctamente',
+            data: {
+                resetToken,
+            },
+        };
+    }
+
+    async resetPassword(token: string, newPassword: string) {
+        try {
+            if (!token) {
+                throw new UnauthorizedException({
+                    status: false,
+                    message: 'Token no proporcionado',
+                    data: [],
+                });
+            }
+
+            let decoded;
+            try {
+                decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+            } catch (error) {
+                if (error instanceof jwt.TokenExpiredError) {
+                    throw new UnauthorizedException({
+                        status: false,
+                        message: 'El token ha expirado, solicite uno nuevo',
+                        data: [],
+                    });
+                }
+                if (error instanceof jwt.JsonWebTokenError) {
+                    if (error.message === 'jwt malformed') {
+                        throw new UnauthorizedException({
+                            status: false,
+                            message: 'Formato de token inválido',
+                            data: [],
+                        });
+                    }
+                    if (error.message === 'invalid signature') {
+                        throw new UnauthorizedException({
+                            status: false,
+                            message: 'Token no válido',
+                            data: [],
+                        });
+                    }
+                }
+                throw new UnauthorizedException({
+                    status: false,
+                    message: 'Token inválido',
+                    data: [],
+                });
+            }
+
+            if (decoded.type !== 'password_reset') {
+                throw new UnauthorizedException({
+                    status: false,
+                    message: 'Token no válido para cambio de contraseña',
+                    data: [],
+                });
+            }
+
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+            const { data: user, error } = await this.supabaseService.clientAdmin
+                .from('usuarios')
+                .update({
+                    contrasena: hashedPassword,
+                    token: null,
+                })
+                .eq('identificacion', decoded.id)
+                .select('correo, nombre, apellido')
+                .single();
+
+            if (error) {
+                throw new BadRequestException({
+                    status: false,
+                    message: 'Error al actualizar la contraseña',
+                    data: [],
+                });
+            }
+
+            // Enviar correo de confirmación de cambio de contraseña
+            await this.emailService.sendPasswordChangedEmail(user.correo, user.nombre, user.apellido);
+
+            return {
+                status: true,
+                message: 'Contraseña actualizada correctamente',
+                data: [],
+            };
+        } catch (error) {
+            if (error.response) {
+                throw error;
+            }
+            throw new InternalServerErrorException({
+                status: false,
+                message: 'Error interno del servidor',
+                data: [],
+            });
+        }
+    }
+
+    async changePassword(identificacion: number, newPassword: string) {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const { error } = await this.supabaseService.clientAdmin
+            .from('usuarios')
+            .update({ contrasena: hashedPassword })
+            .eq('identificacion', identificacion);
+
+        if (error) {
+            throw new InternalServerErrorException({
+                status: false,
+                message: 'Error al cambiar la contraseña',
+                data: [],
+            });
+        }
+
+        return {
+            status: true,
+            message: 'Contraseña cambiada correctamente',
+            data: [],
+        };
+    }
 }

@@ -11,11 +11,11 @@ import {
   Req,
   Patch,
 } from '@nestjs/common';
-import { LoginDto } from 'src/types/auth.type';
+import { LoginDto } from 'src/modules/auth/types/auth.type';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from 'src/common/guard/jwt-auth.guard';
-import { Roles } from 'src/common/decorator/roles.decorator';
-import { RolesGuard } from 'src/common/guard/roles.guard';
+import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
+import { Roles } from 'src/modules/rol/decorator/roles.decorator';
+import { RolesGuard } from 'src/modules/rol/guard/roles.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -28,10 +28,10 @@ export class AuthController {
   }
 
   @Post('logout')
-  @Roles('admin', 'superadmin', 'assistant')
+  @Roles('admin', 'superadmin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async logout(@Req() req) {
-    return this.authService.logout(req.user.userId);
+    return this.authService.logout(req.user.identificacion);
   }
 
   @Post('recovery')
@@ -55,6 +55,6 @@ export class AuthController {
     @Req() req,
     @Body() body: { newPassword: string }
   ) {
-    return this.authService.changePassword(req.user.userId, body.newPassword);
+    return this.authService.changePassword(req.user.identificacion, body.newPassword);
   }
 }

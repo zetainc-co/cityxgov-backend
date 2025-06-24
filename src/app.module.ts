@@ -1,11 +1,22 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { SupabaseModule } from './config/supabase/supabase.module';
-import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { AppController } from './app.controller';
 import { ScheduleModule } from '@nestjs/schedule';
-import { UsersModule } from './modules/users/users.module';
+import { RolModule } from './modules/rol/rol.module';
+import { MgaModule } from './modules/mga/mga.module';
+import { OdsModule } from './modules/ods/ods.module';
+import { AreaModule } from './modules/area/area.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { SupabaseModule } from './config/supabase/supabase.module';
+import { UsuariosModule } from './modules/usuarios/usuarios.module';
+import { ProgramaModule } from './modules/programas/programa.module';
+import { MetaProductoModule } from './modules/meta_producto/meta_producto.module';
+import { MetaResultadoModule } from './modules/meta_resultado/meta_resultado.module';
+import { LineaEstrategicaModule } from './modules/linea_estrategica/linea_estrategica.module';
+import { EnfoquePoblacionalModule } from './modules/enfoque_poblacional/enfoque_poblacional.module';
+import { FuentesFinanciacionModule } from './modules/fuentes_financiacion/fuentes_financiacion.module';
+import { FinanciacionPeriodoModule } from './modules/financiacion_periodo/financiacion_periodo.module';
 
 @Module({
   imports: [
@@ -13,11 +24,24 @@ import { UsersModule } from './modules/users/users.module';
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
-    SupabaseModule,
+    MgaModule,
+    OdsModule,
+    RolModule,
     AuthModule,
-    UsersModule,
+    AreaModule,
+    SupabaseModule,
+    UsuariosModule,
+    ProgramaModule,
+    // UsuarioAreaModule,
+    MetaProductoModule,
+    MetaResultadoModule,
+    LineaEstrategicaModule,
+    EnfoquePoblacionalModule,
+    FuentesFinanciacionModule,
+    FinanciacionPeriodoModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
+
 export class AppModule {}
