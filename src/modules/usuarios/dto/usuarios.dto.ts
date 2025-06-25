@@ -10,6 +10,7 @@ export interface Usuario {
     contrasena: string;
     descripcion?: string;
     avatar?: string;
+    cargo: string;
     activo: boolean;
     token: string;
     created_at: string;
@@ -48,6 +49,7 @@ export interface UsuarioCompleto {
     correo: string;
     avatar?: string;
     descripcion?: string;
+    cargo: string;
     activo: boolean;
     asignaciones: UsuarioAsignacion[];
     created_at: string;
@@ -63,6 +65,7 @@ export interface UsuarioRequest {
     correo: string;
     descripcion?: string;
     avatar?: string;
+    cargo: string;
     area_id: number;    // REQUERIDO
     rol_id: number;     // REQUERIDO
 }
@@ -76,8 +79,9 @@ export interface UsuarioUpdateRequest {
     correo?: string;
     descripcion?: string;
     avatar?: string;
-    area_id?: number;   // OPCIONAL en update
-    rol_id?: number;    // OPCIONAL en update
+    cargo?: string;
+    area_id?: number;
+    rol_id?: number;
 }
 
 // Interfaz para la respuesta estándar (siguiendo el patrón de otros servicios)
@@ -109,6 +113,7 @@ export interface NuevoUsuario {
     correo: string;
     descripcion?: string;
     avatar?: string;
+    cargo?: string;
 }
 
 export interface ActualizarUsuario {
@@ -119,4 +124,5 @@ export interface ActualizarUsuario {
     correo?: string;
     descripcion?: string;
     avatar?: string;
+    cargo?: string;
 }

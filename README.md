@@ -2,97 +2,496 @@
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+# CityxGov Backend API
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+API REST desarrollada con NestJS para el sistema CityxGov, proporcionando servicios para gestión gubernamental, planificación estratégica municipal, seguimiento de metas de desarrollo y administración de programas públicos en el contexto de la gestión pública colombiana.
 
-## Description
+## 📋 Tabla de Contenidos
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [Descripción](#descripción)
+- [Tecnologías](#tecnologías)
+- [Estructura del Proyecto](#estructura-del-proyecto)
+- [Configuración del Proyecto](#configuración-del-proyecto)
+- [Instalación](#instalación)
+- [Desarrollo](#desarrollo)
+- [Docker](#docker)
+- [Testing](#testing)
+- [Despliegue](#despliegue)
+- [API Endpoints](#api-endpoints)
+- [Configuración de Variables de Entorno](#configuración-de-variables-de-entorno)
+- [Licencia](#licencia)
 
-## Project setup
+## 🎯 Descripción
 
-```bash
-$ yarn install
+CityxGov API es una aplicación backend desarrollada con NestJS que proporciona servicios especializados para la gestión pública y gubernamental:
+
+### **Gestión de Programas y Proyectos**
+- **MGA (Metodología General Ajustada)**: Sistema de formulación y evaluación de proyectos de inversión pública
+- **Programas**: Gestión integral de programas gubernamentales y sus componentes
+- **Metas de Producto y Resultado**: Seguimiento y evaluación de indicadores de gestión
+
+### **Planificación Estratégica**
+- **Líneas Estratégicas**: Definición y seguimiento de ejes estratégicos municipales
+- **ODS (Objetivos de Desarrollo Sostenible)**: Alineación con los objetivos de desarrollo sostenible
+- **Enfoque Poblacional**: Gestión de políticas públicas con enfoque diferencial
+
+### **Administración y Control**
+- **Gestión de Usuarios**: Sistema de roles y permisos para diferentes niveles de acceso
+- **Áreas Administrativas**: Organización territorial y funcional de la administración
+- **Fuentes de Financiación**: Control y seguimiento de recursos y presupuestos
+
+### **Servicios Principales**
+- **Autenticación y Autorización**: Gestión segura de usuarios con Supabase Auth
+- **Gestión Documental**: Procesamiento de archivos Excel para carga masiva de datos
+- **APIs RESTful**: Endpoints completos para todas las funcionalidades del sistema
+- **Integración con Base de Datos**: Conexión optimizada con Supabase para persistencia de datos
+
+## 🛠 Tecnologías
+
+- **Framework**: [NestJS](https://nestjs.com/) v11.0.1
+- **Lenguaje**: TypeScript v5.7.3
+- **Base de Datos**: Supabase
+- **Autenticación**: Supabase Auth + JWT + Passport
+- **Validación**: Class Validator + Class Transformer
+- **Documentación API**: Swagger/OpenAPI
+- **Gestión de Paquetes**: Yarn
+- **Testing**: Jest
+- **Containerización**: Docker + Docker Compose
+- **Linting**: ESLint + Prettier
+- **Procesamiento de Archivos**: XLSX para manejo de Excel
+- **Encriptación**: bcrypt para seguridad de contraseñas
+
+## 📁 Estructura del Proyecto
+
+```
+cityxgov-backend/
+├── src/                          # Código fuente principal
+│   ├── app.controller.ts         # Controlador principal de la aplicación
+│   ├── app.service.ts           # Servicio principal de la aplicación
+│   ├── app.module.ts            # Módulo raíz de la aplicación
+│   ├── main.ts                  # Punto de entrada de la aplicación
+│   ├── config/                  # Configuraciones del proyecto
+│   │   ├── email/               # Configuración de servicios de email
+│   │   │   ├── email.service.ts
+│   │   │   └── templete/        # Plantillas de correo
+│   │   └── supabase/            # Configuración de Supabase
+│   │       ├── supabase.controller.ts
+│   │       ├── supabase.module.ts
+│   │       └── supabase.service.ts
+│   ├── modules/                 # Módulos de la aplicación
+│   │   ├── auth/                # Módulo de autenticación
+│   │   │   ├── auth.controller.ts
+│   │   │   ├── auth.module.ts
+│   │   │   ├── auth.service.ts
+│   │   │   ├── guard/           # Guards de autenticación
+│   │   │   │   ├── jwt-auth.guard.ts
+│   │   │   │   └── local-auth.guard.ts
+│   │   │   ├── strategies/      # Estrategias de Passport
+│   │   │   │   ├── jwt.strategy.ts
+│   │   │   │   └── local.strategy.ts
+│   │   │   └── types/           # Tipos para autenticación
+│   │   │       └── auth.type.ts
+│   │   ├── usuarios/            # Módulo de gestión de usuarios
+│   │   │   ├── usuarios.controller.ts
+│   │   │   ├── usuarios.module.ts
+│   │   │   ├── usuarios.service.ts
+│   │   │   ├── dto/             # Data Transfer Objects
+│   │   │   │   └── usuarios.dto.ts
+│   │   │   ├── guard/           # Guards específicos
+│   │   │   │   └── usuarios.guard.ts
+│   │   │   └── pipes/           # Pipes de validación
+│   │   │       ├── password.pipe.ts
+│   │   │       └── usuarios.pipe.ts
+│   │   ├── rol/                 # Módulo de roles y permisos
+│   │   │   ├── rol.controller.ts
+│   │   │   ├── rol.module.ts
+│   │   │   ├── rol.service.ts
+│   │   │   ├── decorator/       # Decoradores personalizados
+│   │   │   │   └── roles.decorator.ts
+│   │   │   ├── dto/
+│   │   │   │   └── rol.dto.ts
+│   │   │   ├── guard/
+│   │   │   │   └── roles.guard.ts
+│   │   │   └── pipes/
+│   │   │       └── rol.pipe.ts
+│   │   ├── area/                # Módulo de áreas administrativas
+│   │   │   ├── area.controller.ts
+│   │   │   ├── area.module.ts
+│   │   │   ├── area.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── area.dto.ts
+│   │   │   └── pipe/
+│   │   │       └── area.pipe.ts
+│   │   ├── programas/           # Módulo de programas gubernamentales
+│   │   │   ├── programa.controller.ts
+│   │   │   ├── programa.module.ts
+│   │   │   ├── programa.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── programa.dto.ts
+│   │   │   └── pipes/
+│   │   │       └── programa.pipe.ts
+│   │   ├── mga/                 # Módulo MGA (Metodología General Ajustada)
+│   │   │   ├── mga.controller.ts
+│   │   │   ├── mga.module.ts
+│   │   │   ├── mga.service.ts
+│   │   │   └── dto/
+│   │   │       └── mga.dto.ts
+│   │   ├── ods/                 # Módulo Objetivos de Desarrollo Sostenible
+│   │   │   ├── ods.controller.ts
+│   │   │   ├── ods.module.ts
+│   │   │   ├── ods.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── ods.dto.ts
+│   │   │   └── pipes/
+│   │   │       └── ods.pipe.ts
+│   │   ├── linea_estrategica/   # Módulo de líneas estratégicas
+│   │   │   ├── linea_estrategica.controller.ts
+│   │   │   ├── linea_estrategica.module.ts
+│   │   │   ├── linea_estrategica.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── linea_estrategica.dto.ts
+│   │   │   └── pipes/
+│   │   │       └── linea_estrategica.pipe.ts
+│   │   ├── meta_producto/       # Módulo de metas de producto
+│   │   │   ├── meta_producto.controller.ts
+│   │   │   ├── meta_producto.module.ts
+│   │   │   ├── meta_producto.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── meta_producto.dto.ts
+│   │   │   └── pipes/
+│   │   │       └── meta_producto.pipe.ts
+│   │   ├── meta_resultado/      # Módulo de metas de resultado
+│   │   │   ├── meta_resultado.controller.ts
+│   │   │   ├── meta_resultado.module.ts
+│   │   │   ├── meta_resultado.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── meta_resultado.dto.ts
+│   │   │   └── pipes/
+│   │   │       └── meta_resultado.pipe.ts
+│   │   ├── enfoque_poblacional/ # Módulo de enfoque poblacional
+│   │   │   ├── enfoque_poblacional.controller.ts
+│   │   │   ├── enfoque_poblacional.module.ts
+│   │   │   ├── enfoque_poblacional.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── enfoque_poblacional.ts
+│   │   │   └── pipe/
+│   │   │       └── enfoque_poblacional.pipe.ts
+│   │   ├── fuentes_financiacion/ # Módulo de fuentes de financiación
+│   │   │   ├── fuentes_financiacion.controller.ts
+│   │   │   ├── fuentes_financiacion.module.ts
+│   │   │   ├── fuentes_financiacion.service.ts
+│   │   │   ├── dto/
+│   │   │   │   └── fuentes_financiacion.ts
+│   │   │   └── pipes/
+│   │   │       └── fuentes_financiacion.pipe.ts
+│   │   └── financiacion_periodo/ # Módulo de períodos de financiación
+│   │       ├── financiacion_periodo.controller.ts
+│   │       ├── financiacion_periodo.module.ts
+│   │       ├── financiacion_periodo.service.ts
+│   │       ├── dto/
+│   │       │   └── financiacion_periodo.dto.ts
+│   │       └── pipes/
+│   │           └── financiacion_periodo.pipe.ts
+│   └── utils/                   # Utilidades compartidas
+├── test/                       # Tests end-to-end
+│   ├── app.e2e-spec.ts
+│   └── jest-e2e.json
+├── Dockerfile                  # Dockerfile para producción
+├── Dockerfile.dev              # Dockerfile para desarrollo
+├── docker-compose.yml          # Docker Compose para producción
+├── docker-compose.dev.yml      # Docker Compose para desarrollo
+├── .dockerignore               # Archivos ignorados por Docker
+├── database-script.sql         # Script de base de datos
+├── package.json                # Dependencias y scripts
+├── yarn.lock                   # Lock file de Yarn
+├── tsconfig.json               # Configuración de TypeScript
+├── tsconfig.build.json         # Configuración de TypeScript para build
+├── eslint.config.mjs           # Configuración de ESLint
+├── nest-cli.json               # Configuración de NestJS CLI
+└── README.md                   # Este archivo
 ```
 
-## Compile and run the project
+### 📂 Descripción de Módulos
+
+#### `auth/` - Autenticación y Autorización
+- **JWT Strategy**: Implementación de autenticación basada en tokens
+- **Local Strategy**: Autenticación con usuario y contraseña
+- **Guards**: Protección de rutas y validación de permisos
+- **Recuperación de contraseña**: Sistema de OTP y restablecimiento
+
+#### `usuarios/` - Gestión de Usuarios
+- **CRUD completo**: Crear, leer, actualizar y eliminar usuarios
+- **Gestión de estados**: Activación/desactivación de cuentas
+- **Cambio de contraseñas**: Funcionalidad segura para actualizar credenciales
+- **Validaciones**: Pipes personalizados para validación de datos
+
+#### `mga/` - Metodología General Ajustada
+- **Carga masiva**: Procesamiento de archivos Excel con datos de proyectos
+- **Gestión de proyectos**: CRUD para proyectos de inversión pública
+- **Validaciones**: Cumplimiento de estándares MGA
+
+#### `programas/` - Gestión de Programas
+- **Administración**: CRUD completo de programas gubernamentales
+- **Clasificación**: Organización por áreas y objetivos
+- **Seguimiento**: Monitoreo de avance y resultados
+
+#### `ods/` - Objetivos de Desarrollo Sostenible
+- **Alineación ODS**: Vinculación de proyectos con objetivos de desarrollo
+- **Indicadores**: Seguimiento de metas e indicadores ODS
+- **Reportes**: Generación de informes de cumplimiento
+
+## ⚙️ Configuración del Proyecto
+
+### Prerrequisitos
+
+- Node.js 22.x o superior
+- Yarn
+- Docker y Docker Compose (opcional)
+- Cuenta de Supabase
+
+## 🚀 Instalación
+
+### Instalación Local
 
 ```bash
-# development
-$ yarn run start
+# Clonar el repositorio
+git clone https://github.com/Z-inc/cityxgov-backend.git
+cd cityxgov-backend
 
-# watch mode
-$ yarn run start:dev
+# Instalar dependencias
+yarn install
 
-# production mode
-$ yarn run start:prod
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus configuraciones
+
+# Ejecutar en modo desarrollo
+yarn start:dev
 ```
 
-## Run tests
+### Instalación con Docker
 
 ```bash
-# unit tests
-$ yarn run test
+# Clonar el repositorio
+git clone https://github.com/Z-inc/cityxgov-backend.git
+cd cityxgov-backend
 
-# e2e tests
-$ yarn run test:e2e
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus configuraciones
 
-# test coverage
-$ yarn run test:cov
+# Ejecutar con Docker Compose (desarrollo)
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-## Deployment
+## 💻 Desarrollo
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Scripts Disponibles
 
 ```bash
-$ yarn install -g mau
-$ mau deploy
+# Desarrollo
+yarn start:dev          # Modo desarrollo con hot reload
+yarn start:debug        # Modo debug
+yarn start              # Modo normal
+
+# Construcción
+yarn build              # Compilar para producción
+yarn start:prod         # Ejecutar versión de producción
+         # Tests end-to-end
+
+
+### Desarrollo con Hot Reload
+
+```bash
+# Desarrollo local
+yarn start:dev
+
+# Desarrollo con Docker
+docker compose -f docker-compose.dev.yml up
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+La aplicación estará disponible en `http://localhost:3000`
+La documentación Swagger estará disponible en `http://localhost:3000/api`
 
-## Resources
+## 🐳 Docker
 
-Check out a few resources that may come in handy when working with NestJS:
+### Desarrollo con Docker
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+# Construir y ejecutar en modo desarrollo
+docker compose -f docker-compose.dev.yml up --build
 
-## Support
+# Solo ejecutar (si ya está construido)
+docker compose -f docker-compose.dev.yml up
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# Parar contenedores
+docker compose -f docker-compose.dev.yml down
+```
 
-## Stay in touch
+### Producción con Docker
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+# Construir y ejecutar en modo producción
+docker compose up --build
 
-## License
+# Solo ejecutar (si ya está construido)
+docker compose up -d
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# Parar contenedores
+docker compose down
+```
+
+### Comandos Docker Útiles
+
+```bash
+# Ver logs
+docker compose logs -f
+
+# Acceder al contenedor
+docker compose exec cityxgov-backend-dev sh
+
+# Limpiar volúmenes
+docker compose down -v
+
+# Reconstruir desde cero
+docker compose build --no-cache
+```
+
+### Características de Docker
+
+- **Multi-stage build** para optimizar tamaño de imagen de producción
+- **Alpine Linux** para imágenes más pequeñas y seguras
+- **Usuario no-root** para mayor seguridad
+- **Healthchecks** para monitoreo de aplicación
+- **Hot reload** en desarrollo con volúmenes
+- **Variables de entorno** configurables
+
+## 🚀 Despliegue
+
+### Variables de Entorno Requeridas
+
+```env
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Application Configuration
+PORT=3000
+NODE_ENV=production
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_key
+
+```
+
+### Despliegue con Docker
+
+```bash
+# Construir imagen de producción
+docker build -t cityxgov-backend:latest .
+
+# Ejecutar en producción
+docker run -d \
+  --name cityxgov-backend \
+  -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e SUPABASE_URL=your_url \
+  -e SUPABASE_ANON_KEY=your_key \
+  cityxgov-backend:latest
+```
+
+### Despliegue con Docker Compose
+
+```bash
+# Configurar variables de entorno en .env
+# Desplegar
+docker compose up -d
+```
+
+## 📡 API Endpoints
+
+### Autenticación
+- `POST /auth/login` - Iniciar sesión
+- `POST /auth/logout` - Cerrar sesión
+- `POST /auth/recovery` - Recuperar contraseña
+- `POST /auth/validate-otp` - Validar código OTP
+- `POST /auth/reset-password` - Restablecer contraseña
+- `PATCH /auth/change-password` - Cambiar contraseña
+
+### Usuarios
+- `GET /usuarios` - Listar usuarios
+- `GET /usuarios/:id` - Obtener usuario por ID
+- `POST /usuarios` - Crear usuario
+- `PATCH /usuarios/:id` - Actualizar usuario
+- `PATCH /usuarios/estado/:id` - Cambiar estado de usuario
+- `PATCH /usuarios/cambiar-clave/:id` - Cambiar contraseña de usuario
+- `DELETE /usuarios/:id` - Eliminar usuario
+
+### MGA (Metodología General Ajustada)
+- `GET /mga` - Listar proyectos MGA
+- `GET /mga/:id` - Obtener proyecto por ID
+- `POST /mga/upload-excel` - Cargar archivo Excel
+- `DELETE /mga/:id` - Eliminar proyecto
+
+### Programas
+- `GET /programa` - Listar programas
+- `GET /programa/:id` - Obtener programa por ID
+- `POST /programa` - Crear programa
+- `PATCH /programa/:id` - Actualizar programa
+- `DELETE /programa/:id` - Eliminar programa
+
+### Y más endpoints para cada módulo...
+
+Para documentación completa de la API, visita: `http://localhost:3000/api`
+
+## 🔧 Configuración de Variables de Entorno
+
+Crear archivo `.env` en la raíz del proyecto:
+
+```env
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Application Configuration
+PORT=3000
+NODE_ENV=development
+
+# JWT Configuration
+JWT_SECRET=your_super_secret_jwt_key
+
+```
+
+## 🔒 Seguridad
+
+- **Autenticación JWT**: Tokens seguros con Supabase Auth
+- **Autorización por roles**: Sistema de permisos granular
+- **Validación de datos**: Pipes de validación en todos los endpoints
+- **CORS configurado**: Protección contra solicitudes no autorizadas
+- **Encriptación de contraseñas**: bcrypt para hash seguro
+- **Variables de entorno**: Configuración sensible protegida
+- **Guards personalizados**: Protección de rutas específicas
+
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está desarrollado por **Z Inc** y es propiedad de la empresa. Todos los derechos reservados.
+
+**Z Inc** - Soluciones tecnológicas para el sector público y privado.
+
+---
+
+## 🆘 Soporte
+
+Para soporte técnico o consultas sobre el proyecto, contacta al equipo de desarrollo de Z Inc:
+
+
