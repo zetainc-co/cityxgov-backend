@@ -38,6 +38,7 @@ export class UsuariosService {
                     correo,
                     avatar,
                     descripcion,
+                    cargo,
                     activo,
                     created_at,
                     updated_at
@@ -54,6 +55,7 @@ export class UsuariosService {
                 const asignaciones = await this.getUsuarioAsignaciones(usuario.id);
                 usuariosCompletos.push({
                     ...usuario,
+                    cargo: usuario.cargo,
                     asignaciones
                 });
             }
@@ -90,6 +92,7 @@ export class UsuariosService {
                     correo,
                     avatar,
                     descripcion,
+                    cargo,
                     activo,
                     created_at,
                     updated_at
@@ -113,6 +116,7 @@ export class UsuariosService {
             const asignaciones = await this.getUsuarioAsignaciones(data.id);
             const usuarioCompleto: UsuarioCompleto = {
                 ...data,
+                cargo: data.cargo,
                 asignaciones
             };
 
@@ -236,6 +240,7 @@ export class UsuariosService {
                 correo: createRequest.correo,
                 descripcion: createRequest.descripcion || null,
                 avatar: createRequest.avatar || null,
+                cargo: createRequest.cargo || null,
                 contrasena: hashedPassword,
                 activo: true
             };
@@ -311,6 +316,7 @@ export class UsuariosService {
                 correo: userData.correo,
                 avatar: userData.avatar,
                 descripcion: userData.descripcion,
+                cargo: userData.cargo,
                 activo: userData.activo,
                 created_at: userData.created_at,
                 updated_at: userData.updated_at,
@@ -456,11 +462,11 @@ export class UsuariosService {
                     };
                 }
             }
-            
+
 
             // 5. Verificar si hay cambios en datos del usuario
             const { area_id, rol_id, ...updateData } = updateRequest;
-            
+
             // Remover campos undefined
             Object.keys(updateData).forEach(key => {
                 if (updateData[key] === undefined) {
@@ -471,7 +477,7 @@ export class UsuariosService {
             // Verificar cambios en datos del usuario
             let hayCambiosUsuario = false;
             if (Object.keys(updateData).length > 0) {
-                hayCambiosUsuario = Object.keys(updateData).some(key => 
+                hayCambiosUsuario = Object.keys(updateData).some(key =>
                     existingData[key] !== updateData[key]
                 );
             }
@@ -479,16 +485,16 @@ export class UsuariosService {
             // Verificar cambios en asignaciones
             let hayCambiosAsignacion = false;
             let currentAsignacion: any = null;
-            
+
             if (updateRequest.area_id !== undefined || updateRequest.rol_id !== undefined) {
                 const { data: asignacion } = await this.supabaseService.clientAdmin
                     .from('usuario_area')
                     .select('id, area_id, rol_id')
                     .eq('usuario_id', id)
                     .maybeSingle();
-                
+
                 currentAsignacion = asignacion;
-                
+
                 if (asignacion) {
                     if (updateRequest.area_id !== undefined && asignacion.area_id !== updateRequest.area_id) {
                         hayCambiosAsignacion = true;
@@ -566,7 +572,7 @@ export class UsuariosService {
             return {
                 status: true,
                 message: 'Usuario actualizado correctamente',
-                data: undefined 
+                data: undefined
             };
         } catch (error) {
             if (error instanceof BadRequestException) {

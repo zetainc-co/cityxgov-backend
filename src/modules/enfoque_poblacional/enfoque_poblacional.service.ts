@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { EnfoquePoblacionalRequest, EnfoquePoblacionalResponse } from './dto/enfoque_poblacional';
 
 @Injectable()
@@ -166,7 +166,7 @@ export class EnfoquePoblacionalService {
                 .update({
                     nombre: updateRequest.nombre,
                     descripcion: updateRequest.descripcion,
-                    update_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', id)
                 .single();
