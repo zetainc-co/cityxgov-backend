@@ -296,8 +296,6 @@ yarn start              # Modo normal
 # Construcción
 yarn build              # Compilar para producción
 yarn start:prod         # Ejecutar versión de producción
-         # Tests end-to-end
-
 
 ### Desarrollo con Hot Reload
 
@@ -372,12 +370,11 @@ docker compose build --no-cache
 ```env
 # Supabase Configuration
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE__KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_=your_service_role_key
 
 # Application Configuration
 PORT=3000
-NODE_ENV=production
 
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_key
@@ -396,7 +393,7 @@ docker run -d \
   -p 3000:3000 \
   -e NODE_ENV=production \
   -e SUPABASE_URL=your_url \
-  -e SUPABASE_ANON_KEY=your_key \
+  -e SUPABASE_KEY=your_key \
   cityxgov-backend:latest
 ```
 
@@ -481,16 +478,41 @@ JWT_SECRET=your_super_secret_jwt_key
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
 5. Abre un Pull Request
 
-## 📄 Licencia
+### Guías de Contribución
 
-Este proyecto está desarrollado por **Z Inc** y es propiedad de la empresa. Todos los derechos reservados.
-
-**Z Inc** - Soluciones tecnológicas para el sector público y privado.
+- Sigue las convenciones de código establecidas
+- Asegúrate de que el linter pase sin errores
+- Actualiza la documentación según sea necesario
+- Usa commits descriptivos y significativos
+- Respeta la arquitectura modular del proyecto
 
 ---
 
-## 🆘 Soporte
+## 👥 Autores
 
-Para soporte técnico o consultas sobre el proyecto, contacta al equipo de desarrollo de Z Inc:
+**Equipo de Desarrollo de Z**
+
+---
+
+## 📊 Estado del Proyecto
+
+### Estado Actual
+🟢 **EN DESARROLLO**
+
+## 📄 Licencia
+
+Este proyecto está bajo Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+---
+
+<div align="center">
+
+**Desarrollado con ❤️ por ZETA INC**
+
+[![ZETA INC](https://img.shields.io/badge/ZETA%20INC-2025-blue.svg)](https://zetainc.com)
+
+</div>
+
+
 
 
