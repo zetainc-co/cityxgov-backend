@@ -213,6 +213,9 @@ cityxgov-backend/
 
 ### 📂 Descripción de Módulos
 
+## 🔐 Módulo de Usuarios
+Este módulo maneja toda la gestión de usuarios, perfiles, roles y organización administrativa.
+
 #### `auth/` - Autenticación y Autorización
 - **JWT Strategy**: Implementación de autenticación basada en tokens
 - **Local Strategy**: Autenticación con usuario y contraseña
@@ -225,21 +228,77 @@ cityxgov-backend/
 - **Cambio de contraseñas**: Funcionalidad segura para actualizar credenciales
 - **Validaciones**: Pipes personalizados para validación de datos
 
-#### `mga/` - Metodología General Ajustada
-- **Carga masiva**: Procesamiento de archivos Excel con datos de proyectos
-- **Gestión de proyectos**: CRUD para proyectos de inversión pública
-- **Validaciones**: Cumplimiento de estándares MGA
+#### `rol/` - Gestión de Roles y Permisos
+- **Control de acceso**: Sistema granular de permisos por módulo
+- **Jerarquía de roles**: Definición de niveles de autorización
+- **Decoradores**: Sistema de metadatos para protección de endpoints
+- **Guards personalizados**: Validación automática de permisos
+
+#### `area/` - Áreas Administrativas
+- **Organización territorial**: Gestión de dependencias y áreas funcionales
+- **Asignación de usuarios**: Vinculación de personal a áreas específicas
+- **Jerarquía administrativa**: Estructura organizacional de la entidad
+- **Control de acceso por área**: Restricciones basadas en ubicación administrativa
+
+## 📊 Módulo Plan Indicativo
+Este módulo gestiona la planificación estratégica y el seguimiento de metas institucionales.
 
 #### `programas/` - Gestión de Programas
 - **Administración**: CRUD completo de programas gubernamentales
-- **Clasificación**: Organización por áreas y objetivos
-- **Seguimiento**: Monitoreo de avance y resultados
+- **Clasificación**: Organización por áreas y objetivos estratégicos
+- **Seguimiento**: Monitoreo de avance y resultados de programas
+- **Indicadores**: Medición de cumplimiento y efectividad
+
+#### `linea_estrategica/` - Líneas Estratégicas
+- **Definición estratégica**: Establecimiento de ejes de desarrollo municipal
+- **Alineación institucional**: Coherencia con planes de desarrollo
+- **Seguimiento estratégico**: Monitoreo de cumplimiento de objetivos
+- **Vinculación programática**: Conexión con programas y proyectos
+
+#### `meta_resultado/` - Metas de Resultado
+- **Definición de resultados**: Establecimiento de metas de impacto
+- **Indicadores de resultado**: Medición de efectos e impactos
+- **Seguimiento temporal**: Monitoreo periódico de cumplimiento
+- **Evaluación de logros**: Análisis de resultados obtenidos
+
+#### `meta_producto/` - Metas de Producto
+- **Productos entregables**: Definición de bienes y servicios a generar
+- **Indicadores de producto**: Medición de outputs y entregas
+- **Programación**: Planificación temporal de productos
+- **Control de calidad**: Verificación de estándares de entrega
+
+## 📚 Módulo de Catálogo
+Este módulo contiene los catálogos maestros y referencias del sistema.
+
+#### `mga/` - Metodología General Ajustada
+- **Carga masiva**: Procesamiento de archivos Excel con datos de proyectos
+- **Gestión de proyectos**: CRUD para proyectos de inversión pública
+- **Validaciones MGA**: Cumplimiento de estándares metodológicos
+- **Formulación**: Estructura estándar para proyectos de inversión
 
 #### `ods/` - Objetivos de Desarrollo Sostenible
 - **Alineación ODS**: Vinculación de proyectos con objetivos de desarrollo
-- **Indicadores**: Seguimiento de metas e indicadores ODS
-- **Reportes**: Generación de informes de cumplimiento
+- **Indicadores globales**: Seguimiento de metas e indicadores ODS
+- **Reportes de cumplimiento**: Generación de informes de sostenibilidad
+- **Contribución al desarrollo**: Medición de impacto en ODS
 
+#### `fuentes_financiacion/` - Fuentes de Financiación
+- **Catálogo de fuentes**: Registro de todas las fuentes de recursos
+- **Clasificación**: Organización por tipo, origen y características
+- **Disponibilidad**: Control de recursos disponibles por fuente
+- **Seguimiento**: Monitoreo de utilización de recursos
+
+#### `financiacion_periodo/` - Períodos de Financiación
+- **Vigencias**: Gestión de períodos fiscales y presupuestales
+- **Cronogramas**: Programación temporal de recursos
+- **Distribución**: Asignación de recursos por períodos
+- **Control temporal**: Seguimiento de ejecución por vigencias
+
+#### `enfoque_poblacional/` - Enfoque Poblacional
+- **Grupos poblacionales**: Catalogación de poblaciones objetivo
+- **Enfoque diferencial**: Consideraciones especiales por población
+- **Políticas públicas**: Alineación con enfoques poblacionales
+- **Inclusión**: Garantía de acceso equitativo a programas
 ## ⚙️ Configuración del Proyecto
 
 ### Prerrequisitos
