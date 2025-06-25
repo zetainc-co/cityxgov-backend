@@ -28,15 +28,15 @@ export class ValidateUsuarioPipe implements PipeTransform {
     if (this.isCreateRequest(value)) {
       return this.validateCreateRequest(value);
     }
-    
+
     // Validaciones para actualizar usuario (UsuarioUpdateRequest)
     return this.validateUpdateRequest(value);
   }
 
   private isCreateRequest(value: any): boolean {
     // Es create si tiene campos requeridos para crear
-    return value.identificacion !== undefined && 
-           value.nombre !== undefined && 
+    return value.identificacion !== undefined &&
+           value.nombre !== undefined &&
            value.apellido !== undefined;
   }
 
@@ -176,19 +176,21 @@ export class ValidateUsuarioPipe implements PipeTransform {
       }
     }
 
-    // Validación del avatar (opcional)
-    if (value.avatar !== undefined && value.avatar !== null) {
-      if (value.avatar.trim().length > 0) {
-        if (value.avatar.trim().length > 255) {
-          throw new BadRequestException('La URL del avatar no puede tener más de 255 caracteres');
+    // Validación del cargo (opcional)
+    if (value.cargo !== undefined && value.cargo !== null) {
+      if (value.cargo.trim().length > 0) {
+        if (value.cargo.trim().length < 2) {
+          throw new BadRequestException('El cargo debe tener al menos 2 caracteres');
         }
-        // Validación básica de URL
-        try {
-          new URL(value.avatar.trim());
-        } catch {
-          throw new BadRequestException('La URL del avatar no es válida');
+        if (value.cargo.trim().length > 100) {
+          throw new BadRequestException('El cargo no puede tener más de 100 caracteres');
+        }
+        // Solo letras, espacios y algunos caracteres especiales
+        const cargoPattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-\.\'\/\(\)]+$/;
+        if (!cargoPattern.test(value.cargo.trim())) {
+          throw new BadRequestException('El cargo contiene caracteres no válidos');
         }
       }
     }
   }
-} 
+}

@@ -40,7 +40,7 @@ export class AuthService {
                 data: [],
             });
         }
-        
+
         const isPasswordValid = await bcrypt.compare(contrasena, user.contrasena);
 
         if (!isPasswordValid) {
@@ -96,6 +96,7 @@ export class AuthService {
                     telefono: user.telefono,
                     roles,
                     avatar: user.avatar,
+                    cargo: user.cargo,
                 },
                 token,
             },
