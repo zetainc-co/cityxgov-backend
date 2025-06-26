@@ -260,10 +260,6 @@ cd cityxgov-backend
 # Instalar dependencias
 yarn install
 
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus configuraciones
-
 # Ejecutar en modo desarrollo
 yarn start:dev
 ```
@@ -274,10 +270,6 @@ yarn start:dev
 # Clonar el repositorio
 git clone https://github.com/Z-inc/cityxgov-backend.git
 cd cityxgov-backend
-
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus configuraciones
 
 # Ejecutar con Docker Compose (desarrollo)
 docker compose -f docker-compose.dev.yml up --build
@@ -434,25 +426,6 @@ docker compose up -d
 ### Y más endpoints para cada módulo...
 
 Para documentación completa de la API, visita: `http://localhost:3000/api`
-
-## 🔧 Configuración de Variables de Entorno
-
-Crear archivo `.env` en la raíz del proyecto:
-
-```env
-# Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Application Configuration
-PORT=3000
-NODE_ENV=development
-
-# JWT Configuration
-JWT_SECRET=your_super_secret_jwt_key
-
-```
 
 ## 🔒 Seguridad
 
