@@ -212,24 +212,6 @@ cityxgov-backend/
 ```
 
 
-### 📂 Descripción de Módulos
-
-## 🔐 Módulo de Usuarios
-Gestión de usuarios, perfiles, roles y organización administrativa.
-
-- **`auth/`** - Sistema de autenticación con JWT y recuperación de contraseñas
-- **`usuarios/`** - CRUD de usuarios y gestión de estados de cuenta
-- **`rol/`** - Control de roles y permisos del sistema
-- **`area/`** - Gestión de áreas administrativas y asignación de personal
-
-## 📊 Módulo Plan Indicativo
-Planificación estratégica y seguimiento de metas institucionales.
-
-- **`programas/`** - Gestión de programas gubernamentales y seguimiento
-- **`linea_estrategica/`** - Definición de líneas estratégicas municipales
-- **`meta_resultado/`** - Gestión de metas de resultado e indicadores de impacto
-- **`meta_producto/`** - Control de metas de producto y entregables
-
 ## 📚 Módulo de Catálogo
 Catálogos maestros y referencias del sistema.
 <<<<<<< develop
