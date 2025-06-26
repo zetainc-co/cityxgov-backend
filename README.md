@@ -297,12 +297,6 @@ yarn start              # Modo normal
 yarn build              # Compilar para producción
 yarn start:prod         # Ejecutar versión de producción
 
-### Desarrollo con Hot Reload
-
-```bash
-# Desarrollo local
-yarn start:dev
-
 # Desarrollo con Docker
 docker compose -f docker-compose.dev.yml up
 ```
