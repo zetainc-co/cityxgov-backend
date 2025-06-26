@@ -211,34 +211,33 @@ cityxgov-backend/
 └── README.md                   # Este archivo
 ```
 
+
 ### 📂 Descripción de Módulos
 
-#### `auth/` - Autenticación y Autorización
-- **JWT Strategy**: Implementación de autenticación basada en tokens
-- **Local Strategy**: Autenticación con usuario y contraseña
-- **Guards**: Protección de rutas y validación de permisos
-- **Recuperación de contraseña**: Sistema de OTP y restablecimiento
+## 🔐 Módulo de Usuarios
+Gestión de usuarios, perfiles, roles y organización administrativa.
 
-#### `usuarios/` - Gestión de Usuarios
-- **CRUD completo**: Crear, leer, actualizar y eliminar usuarios
-- **Gestión de estados**: Activación/desactivación de cuentas
-- **Cambio de contraseñas**: Funcionalidad segura para actualizar credenciales
-- **Validaciones**: Pipes personalizados para validación de datos
+- **`auth/`** - Sistema de autenticación con JWT y recuperación de contraseñas
+- **`usuarios/`** - CRUD de usuarios y gestión de estados de cuenta
+- **`rol/`** - Control de roles y permisos del sistema
+- **`area/`** - Gestión de áreas administrativas y asignación de personal
 
-#### `mga/` - Metodología General Ajustada
-- **Carga masiva**: Procesamiento de archivos Excel con datos de proyectos
-- **Gestión de proyectos**: CRUD para proyectos de inversión pública
-- **Validaciones**: Cumplimiento de estándares MGA
+## 📊 Módulo Plan Indicativo
+Planificación estratégica y seguimiento de metas institucionales.
 
-#### `programas/` - Gestión de Programas
-- **Administración**: CRUD completo de programas gubernamentales
-- **Clasificación**: Organización por áreas y objetivos
-- **Seguimiento**: Monitoreo de avance y resultados
+- **`programas/`** - Gestión de programas gubernamentales y seguimiento
+- **`linea_estrategica/`** - Definición de líneas estratégicas municipales
+- **`meta_resultado/`** - Gestión de metas de resultado e indicadores de impacto
+- **`meta_producto/`** - Control de metas de producto y entregables
 
-#### `ods/` - Objetivos de Desarrollo Sostenible
-- **Alineación ODS**: Vinculación de proyectos con objetivos de desarrollo
-- **Indicadores**: Seguimiento de metas e indicadores ODS
-- **Reportes**: Generación de informes de cumplimiento
+## 📚 Módulo de Catálogo
+Catálogos maestros y referencias del sistema.
+
+- **`mga/`** - Metodología General Ajustada para proyectos de inversión
+- **`ods/`** - Objetivos de Desarrollo Sostenible y alineación de proyectos
+- **`fuentes_financiacion/`** - Catálogo de fuentes de recursos y financiación
+- **`financiacion_periodo/`** - Gestión de períodos fiscales y vigencias
+- **`enfoque_poblacional/`** - Catalogación de grupos poblacionales objetivo
 
 ## ⚙️ Configuración del Proyecto
 
@@ -261,10 +260,6 @@ cd cityxgov-backend
 # Instalar dependencias
 yarn install
 
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus configuraciones
-
 # Ejecutar en modo desarrollo
 yarn start:dev
 ```
@@ -275,10 +270,6 @@ yarn start:dev
 # Clonar el repositorio
 git clone https://github.com/Z-inc/cityxgov-backend.git
 cd cityxgov-backend
-
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus configuraciones
 
 # Ejecutar con Docker Compose (desarrollo)
 docker compose -f docker-compose.dev.yml up --build
@@ -297,14 +288,6 @@ yarn start              # Modo normal
 # Construcción
 yarn build              # Compilar para producción
 yarn start:prod         # Ejecutar versión de producción
-         # Tests end-to-end
-
-
-### Desarrollo con Hot Reload
-
-```bash
-# Desarrollo local
-yarn start:dev
 
 # Desarrollo con Docker
 docker compose -f docker-compose.dev.yml up
@@ -373,12 +356,11 @@ docker compose build --no-cache
 ```env
 # Supabase Configuration
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+SUPABASE__KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_=your_service_role_key
 
 # Application Configuration
 PORT=3000
-NODE_ENV=production
 
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_key
@@ -397,7 +379,7 @@ docker run -d \
   -p 3000:3000 \
   -e NODE_ENV=production \
   -e SUPABASE_URL=your_url \
-  -e SUPABASE_ANON_KEY=your_key \
+  -e SUPABASE_KEY=your_key \
   cityxgov-backend:latest
 ```
 
@@ -445,25 +427,6 @@ docker compose up -d
 
 Para documentación completa de la API, visita: `http://localhost:3000/api`
 
-## 🔧 Configuración de Variables de Entorno
-
-Crear archivo `.env` en la raíz del proyecto:
-
-```env
-# Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Application Configuration
-PORT=3000
-NODE_ENV=development
-
-# JWT Configuration
-JWT_SECRET=your_super_secret_jwt_key
-
-```
-
 ## 🔒 Seguridad
 
 - **Autenticación JWT**: Tokens seguros con Supabase Auth
@@ -482,16 +445,35 @@ JWT_SECRET=your_super_secret_jwt_key
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
 5. Abre un Pull Request
 
-## 📄 Licencia
+### Guías de Contribución
 
-Este proyecto está desarrollado por **Z Inc** y es propiedad de la empresa. Todos los derechos reservados.
-
-**Z Inc** - Soluciones tecnológicas para el sector público y privado.
+- Sigue las convenciones de código establecidas
+- Asegúrate de que el linter pase sin errores
+- Actualiza la documentación según sea necesario
+- Usa commits descriptivos y significativos
+- Respeta la arquitectura modular del proyecto
 
 ---
 
-## 🆘 Soporte
+## 👥 Autores
 
-Para soporte técnico o consultas sobre el proyecto, contacta al equipo de desarrollo de Z Inc:
+**Equipo de Desarrollo de Z**
 
+---
 
+## 📊 Estado del Proyecto
+
+### Estado Actual
+🟢 **EN DESARROLLO**
+
+## 📄 Licencia
+
+Este proyecto está bajo Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+---
+
+<div align="center">
+
+**Desarrollado con ❤️ por ZETA INC**
+
+[![ZETA INC](https://img.shields.io/badge/ZETA%20INC-2025-blue.svg)](https://zetainc.com)
