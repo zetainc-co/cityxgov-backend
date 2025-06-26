@@ -232,6 +232,15 @@ Planificación estratégica y seguimiento de metas institucionales.
 
 ## 📚 Módulo de Catálogo
 Catálogos maestros y referencias del sistema.
+<<<<<<< develop
+
+- **`mga/`** - Metodología General Ajustada para proyectos de inversión
+- **`ods/`** - Objetivos de Desarrollo Sostenible y alineación de proyectos
+- **`fuentes_financiacion/`** - Catálogo de fuentes de recursos y financiación
+- **`financiacion_periodo/`** - Gestión de períodos fiscales y vigencias
+- **`enfoque_poblacional/`** - Catalogación de grupos poblacionales objetivo
+=======
+>>>>>>> master
 
 - **`mga/`** - Metodología General Ajustada para proyectos de inversión
 - **`ods/`** - Objetivos de Desarrollo Sostenible y alineación de proyectos
@@ -446,6 +455,35 @@ Para documentación completa de la API, visita: `http://localhost:3000/api`
 5. Abre un Pull Request
 
 ### Guías de Contribución
+<<<<<<< develop
+
+- Sigue las convenciones de código establecidas
+- Asegúrate de que el linter pase sin errores
+- Actualiza la documentación según sea necesario
+- Usa commits descriptivos y significativos
+- Respeta la arquitectura modular del proyecto
+
+---
+
+## 👥 Autores
+
+**Equipo de Desarrollo de Z**
+
+---
+
+## 📊 Estado del Proyecto
+
+### Estado Actual
+🟢 **EN DESARROLLO**
+
+## 📄 Licencia
+
+Este proyecto está bajo Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+---
+
+<div align="center">
+=======
 
 - Sigue las convenciones de código establecidas
 - Asegúrate de que el linter pase sin errores
@@ -481,5 +519,8 @@ Este proyecto está bajo Licencia MIT. Ver el archivo `LICENSE` para más detall
 </div>
 
 
+>>>>>>> master
 
+**Desarrollado con ❤️ por ZETA INC**
 
+[![ZETA INC](https://img.shields.io/badge/ZETA%20INC-2025-blue.svg)](https://zetainc.com)
