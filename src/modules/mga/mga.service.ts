@@ -5,12 +5,33 @@ import {
     NotFoundException,
 } from '@nestjs/common';
 import * as XLSX from 'xlsx';
-import { CreateMgaDto } from './dto/mga.dto';
+import { CreateMgaDto, UpdateMgaDto } from './dto/mga.dto';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
+import { Express } from 'express';
 
 @Injectable()
 export class MgaService {
     constructor(private readonly supabaseService: SupabaseService) { }
+
+    // Manejar upload de Excel con validaciones
+    async uploadExcel(file: Express.Multer.File): Promise<any> {
+        // Validar que se proporcionó un archivo
+        if (!file) {
+            throw new BadRequestException('No se ha proporcionado ningún archivo');
+        }
+
+        // Validar que sea un archivo Excel
+        const allowedMimeTypes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'application/vnd.ms-excel' // .xls
+        ];
+
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+            throw new BadRequestException('El archivo debe ser un Excel (.xlsx o .xls)');
+        }
+
+        return await this.processExcelFile(file.buffer);
+    }
 
     // Procesar archivo Excel
     async processExcelFile(buffer: Buffer): Promise<any> {
@@ -203,6 +224,63 @@ export class MgaService {
         }
     }
 
+    // Validar datos de actualización
+    private validateUpdateData(updateData: UpdateMgaDto): UpdateMgaDto {
+        const errors: string[] = [];
+        const validatedData: UpdateMgaDto = {};
+
+        // Validar campos numéricos si están presentes
+        const numericFields = [
+            'sector_codigo',
+            'programa_codigo',
+            'producto_codigo',
+            'indicador_codigo',
+            'subprograma_codigo',
+        ];
+
+        numericFields.forEach((field) => {
+            if (updateData[field] !== undefined) {
+                const value = updateData[field];
+                if (isNaN(Number(value)) || !Number.isInteger(Number(value))) {
+                    errors.push(`${field} debe ser un número entero`);
+                } else {
+                    validatedData[field] = Number(value);
+                }
+            }
+        });
+
+        // Validar campos de texto si están presentes
+        const stringFields = [
+            'sector_nombre',
+            'programa_nombre',
+            'producto_nombre',
+            'indicador_nombre',
+            'unidad_medida',
+            'subprograma_nombre',
+        ];
+
+        stringFields.forEach((field) => {
+            if (updateData[field] !== undefined) {
+                const value = String(updateData[field]).trim();
+                if (value.length === 0) {
+                    errors.push(`${field} no puede estar vacío`);
+                } else if (value.length > 255) {
+                    errors.push(`${field} excede la longitud máxima (255 caracteres)`);
+                } else {
+                    validatedData[field] = value;
+                }
+            }
+        });
+
+        if (errors.length > 0) {
+            throw new BadRequestException(
+                `Errores de validación: ${errors.join(', ')}`,
+            );
+        }
+
+        return validatedData;
+    }
+
     // Insertar datos en la base de datos
     private async createMgaRecords(mgaRecords: CreateMgaDto[]): Promise<any[]> {
         try {
@@ -290,8 +368,52 @@ export class MgaService {
         }
     }
 
+    // Actualizar un registro
+    async update(id: number, updateMgaDto: UpdateMgaDto): Promise<any> {
+        try {
+            // Verificar que el registro existe
+            await this.findOne(id);
+
+            // Validar los datos de entrada si se proporcionan
+            const validatedData = this.validateUpdateData(updateMgaDto);
+
+            // Actualizar el registro en la base de datos
+            const { data, error } = await this.supabaseService.clientAdmin
+                .from('caracterizacion_mga')
+                .update({
+                    ...validatedData,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error actualizando registro:', error);
+                throw new BadRequestException(
+                    `Error actualizando registro: ${error.message}`,
+                );
+            }
+
+            return {
+                message: 'Registro MGA actualizado exitosamente',
+                data: data
+            };
+        } catch (error) {
+            if (
+                error instanceof NotFoundException ||
+                error instanceof BadRequestException
+            ) {
+                throw error;
+            }
+            throw new BadRequestException(
+                `Error inesperado actualizando registro: ${error.message}`,
+            );
+        }
+    }
+
     // Eliminar un registro
-    async delete(id: number): Promise<void> {
+    async delete(id: number): Promise<any> {
         try {
             // Verificar que el registro existe antes de eliminarlo
             await this.findOne(id);
@@ -302,11 +424,14 @@ export class MgaService {
                 .eq('id', id);
 
             if (error) {
-                console.error('Error eliminando registro:', error);
                 throw new BadRequestException(
                     `Error eliminando registro: ${error.message}`,
                 );
             }
+
+            return {
+                message: 'Registro MGA eliminado exitosamente'
+            };
         } catch (error) {
             if (
                 error instanceof NotFoundException ||
