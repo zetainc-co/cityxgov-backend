@@ -117,28 +117,28 @@ export class FinanciacionPeriodoService {
             }
 
             // Verificar duplicados (misma fuente, meta y periodo)
-            // const { data: duplicateCheck, error: duplicateError } = await this.supabaseService.clientAdmin
-            //     .from('financiacion_periodo')
-            //     .select('id')
-            //     .eq('fuente_id', createRequest.fuente_id)
-            //     .eq('meta_id', createRequest.meta_id)
-            //     .eq('periodo', createRequest.periodo)
-            //     .limit(1);
+            const { data: duplicateCheck, error: duplicateError } = await this.supabaseService.clientAdmin
+                .from('financiacion_periodo')
+                .select('id')
+                .eq('fuente_id', createRequest.fuente_id)
+                .eq('meta_id', createRequest.meta_id)
+                .eq('periodo', createRequest.periodo)
+                .limit(1);
 
-            // if (duplicateError) {
-            //     throw new InternalServerErrorException(
-            //         'Error al verificar duplicados: ' + duplicateError.message,
-            //     );
-            // }
+            if (duplicateError) {
+                throw new InternalServerErrorException(
+                    'Error al verificar duplicados: ' + duplicateError.message,
+                );
+            }
 
-            // if (duplicateCheck.length > 0) {
-            //     return {
-            //         status: false,
-            //         message: 'Ya existe un registro con la misma fuente, meta y periodo',
-            //         error: 'Registro duplicado',
-            //         data: [],
-            //     };
-            // }
+            if (duplicateCheck.length > 0) {
+                return {
+                    status: false,
+                    message: 'Ya existe un registro con la misma fuente, meta y periodo',
+                    error: 'Registro duplicado',
+                    data: [],
+                };
+            }
 
             // Crear el registro
             const { data, error } = await this.supabaseService.clientAdmin
@@ -243,34 +243,34 @@ export class FinanciacionPeriodoService {
             }
 
             // Verificar duplicados si se cambian los campos clave
-            // if (existingData.fuente_id !== updateRequest.fuente_id ||
-            //     existingData.meta_id !== updateRequest.meta_id ||
-            //     existingData.periodo !== updateRequest.periodo) {
+            if (existingData.fuente_id !== updateRequest.fuente_id ||
+                existingData.meta_id !== updateRequest.meta_id ||
+                existingData.periodo !== updateRequest.periodo) {
 
-            //     const { data: duplicateCheck, error: duplicateError } = await this.supabaseService.clientAdmin
-            //         .from('financiacion_periodo')
-            //         .select('id')
-            //         .eq('fuente_id', updateRequest.fuente_id)
-            //         .eq('meta_id', updateRequest.meta_id)
-            //         .eq('periodo', updateRequest.periodo)
-            //         .neq('id', id)
-            //         .limit(1);
+                const { data: duplicateCheck, error: duplicateError } = await this.supabaseService.clientAdmin
+                    .from('financiacion_periodo')
+                    .select('id')
+                    .eq('fuente_id', updateRequest.fuente_id)
+                    .eq('meta_id', updateRequest.meta_id)
+                    .eq('periodo', updateRequest.periodo)
+                    .neq('id', id)
+                    .limit(1);
 
-            //     if (duplicateError) {
-            //         throw new InternalServerErrorException(
-            //             'Error al verificar duplicados: ' + duplicateError.message,
-            //         );
-            //     }
+                if (duplicateError) {
+                    throw new InternalServerErrorException(
+                        'Error al verificar duplicados: ' + duplicateError.message,
+                    );
+                }
 
-            //     if (duplicateCheck.length > 0) {
-            //         return {
-            //             status: false,
-            //             message: 'Ya existe un registro con la misma fuente, meta y periodo',
-            //             error: 'Registro duplicado',
-            //             data: [],
-            //         };
-            //     }
-            // }
+                if (duplicateCheck.length > 0) {
+                    return {
+                        status: false,
+                        message: 'Ya existe un registro con la misma fuente, meta y periodo',
+                        error: 'Registro duplicado',
+                        data: [],
+                    };
+                }
+            }
 
             // Actualizar el registro
             const { data: updatedData, error: updateError } = await this.supabaseService.clientAdmin
