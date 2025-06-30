@@ -17,6 +17,7 @@ import { LineaEstrategicaModule } from './modules/linea_estrategica/linea_estrat
 import { EnfoquePoblacionalModule } from './modules/enfoque_poblacional/enfoque_poblacional.module';
 import { FuentesFinanciacionModule } from './modules/fuentes_financiacion/fuentes_financiacion.module';
 import { FinanciacionPeriodoModule } from './modules/financiacion_periodo/financiacion_periodo.module';
+import { EntidadTerritorialModule } from './modules/entidad_territorial/entidad_territorial.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { FinanciacionPeriodoModule } from './modules/financiacion_periodo/financ
     EnfoquePoblacionalModule,
     FuentesFinanciacionModule,
     FinanciacionPeriodoModule,
+    EntidadTerritorialModule,
   ],
   controllers: [AppController],
   providers: [AppService],

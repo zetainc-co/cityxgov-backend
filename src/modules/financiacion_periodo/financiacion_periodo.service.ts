@@ -228,7 +228,7 @@ export class FinanciacionPeriodoService {
             }
 
             // Verificar si hay cambios
-            if (existingData.fuente_id === updateRequest.fuente_id && 
+            if (existingData.fuente_id === updateRequest.fuente_id &&
                 existingData.meta_id === updateRequest.meta_id &&
                 existingData.periodo === updateRequest.periodo &&
                 existingData.fuente_financiacion === updateRequest.fuente_financiacion &&
@@ -243,10 +243,10 @@ export class FinanciacionPeriodoService {
             }
 
             // Verificar duplicados si se cambian los campos clave
-            if (existingData.fuente_id !== updateRequest.fuente_id || 
+            if (existingData.fuente_id !== updateRequest.fuente_id ||
                 existingData.meta_id !== updateRequest.meta_id ||
                 existingData.periodo !== updateRequest.periodo) {
-                
+
                 const { data: duplicateCheck, error: duplicateError } = await this.supabaseService.clientAdmin
                     .from('financiacion_periodo')
                     .select('id')
@@ -332,7 +332,7 @@ export class FinanciacionPeriodoService {
                     status: false,
                     message: `No existe una financiación por periodo con el ID ${id}`,
                     error: 'ID no encontrado',
-                    data: [],   
+                    data: [],
                 };
             }
 
