@@ -339,15 +339,6 @@ docker compose down -v
 docker compose build --no-cache
 ```
 
-### Características de Docker
-
-- **Multi-stage build** para optimizar tamaño de imagen de producción
-- **Alpine Linux** para imágenes más pequeñas y seguras
-- **Usuario no-root** para mayor seguridad
-- **Healthchecks** para monitoreo de aplicación
-- **Hot reload** en desarrollo con volúmenes
-- **Variables de entorno** configurables
-
 ## 🚀 Despliegue
 
 ### Variables de Entorno Requeridas
