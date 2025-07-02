@@ -14,6 +14,7 @@ import { ProgramaModule } from './modules/programas/programa.module';
 import { MetaProductoModule } from './modules/meta_producto/meta_producto.module';
 import { MetaResultadoModule } from './modules/meta_resultado/meta_resultado.module';
 import { LineaEstrategicaModule } from './modules/linea_estrategica/linea_estrategica.module';
+import { EntidadTerritorialModule } from './modules/entidad_territorial/entidad_territorial.module';
 import { EnfoquePoblacionalModule } from './modules/enfoque_poblacional/enfoque_poblacional.module';
 import { FuentesFinanciacionModule } from './modules/fuentes_financiacion/fuentes_financiacion.module';
 import { FinanciacionPeriodoModule } from './modules/financiacion_periodo/financiacion_periodo.module';
@@ -32,11 +33,11 @@ import { FinanciacionPeriodoModule } from './modules/financiacion_periodo/financ
     SupabaseModule,
     UsuariosModule,
     ProgramaModule,
-    // UsuarioAreaModule,
     MetaProductoModule,
     MetaResultadoModule,
     LineaEstrategicaModule,
     EnfoquePoblacionalModule,
+    EntidadTerritorialModule,
     FuentesFinanciacionModule,
     FinanciacionPeriodoModule,
   ],

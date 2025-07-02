@@ -3,33 +3,44 @@
 -- Sistema de Gestión Estratégica
 -- Archivo: database_script.sql
 -- Base de datos: Supabase
--- Fecha: 2025-05-28
+-- Fecha: 2025-01-21
+-- Actualizado: 2025-06-30
+-- Autor: Yedixon Ramones
+-- Versión: 1.0.0
 -- ================================================================
 
 -- ================================================================
--- 1. FUNCIÓN PARA TRIGGER DE UPDATE_AT (Se crea una sola vez)
+-- 1. FUNCIÓN PARA TRIGGER DE UPDATED_AT (Se crea una sola vez)
 -- ================================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.update_at = NOW();
+    NEW.updated_at = NOW();
     RETURN NEW;
 END;
 $$ language 'plpgsql';
 
-metas_resultado_producto
-
 -- ================================================================
--- 2. TABLAS MAESTRAS (Sin dependencias)
+-- 2. TABLAS MAESTRAS
 -- ================================================================
 
--- Tabla: usuario
-CREATE TABLE usuario (
-    id  SERIAL PRIMARY KEY,
+-- Tabla: usuarios
+CREATE TABLE usuarios (
+    id SERIAL PRIMARY KEY,
+    user_id UUID,
+    identificacion VARCHAR,
     nombre VARCHAR NOT NULL,
+    apellido VARCHAR,
     descripcion TEXT,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    correo VARCHAR,
+    telefono VARCHAR,
+    activo BOOLEAN DEFAULT true,
+    contrasena VARCHAR,
+    avatar VARCHAR,
+    token VARCHAR,
+    cargo VARCHAR,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tabla: rol
@@ -37,8 +48,8 @@ CREATE TABLE rol (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
     descripcion TEXT,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tabla: area
@@ -46,16 +57,16 @@ CREATE TABLE area (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
     descripcion TEXT,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tabla: ods
 CREATE TABLE ods (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tabla: enfoque_poblacional
@@ -63,8 +74,8 @@ CREATE TABLE enfoque_poblacional (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
     descripcion TEXT,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tabla: fuentes_financiacion
@@ -72,8 +83,8 @@ CREATE TABLE fuentes_financiacion (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
     descripcion TEXT,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Tabla: caracterizacion_mga
@@ -90,8 +101,41 @@ CREATE TABLE caracterizacion_mga (
     unidad_medida VARCHAR,
     subprograma_codigo INTEGER,
     subprograma_nombre VARCHAR,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabla: entidad_territorial
+CREATE TABLE entidad_territorial (
+    id SERIAL PRIMARY KEY,
+    -- Datos básicos de la entidad
+    nombre_entidad VARCHAR NOT NULL,
+    nombre_representante_legal VARCHAR NOT NULL,
+    nit VARCHAR NOT NULL UNIQUE,
+
+    -- Información municipal
+    nombre_municipio VARCHAR NOT NULL,
+    departamento VARCHAR NOT NULL,
+    region VARCHAR,
+    categoria_municipal VARCHAR NOT NULL,
+    poblacion INTEGER NOT NULL,
+
+    -- Ubicación Google Maps
+    latitud DECIMAL(10, 8),
+    longitud DECIMAL(11, 8),
+    direccion_completa TEXT,
+
+    -- Archivos (URLs de Supabase Storage)
+    logo_municipio TEXT,
+    imagenes TEXT[], -- Array de URLs
+    mapa_municipio TEXT,
+
+    -- Organigrama (estructura JSON)
+    organigrama JSONB,
+
+    -- Campos de auditoría
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ================================================================
@@ -105,8 +149,8 @@ CREATE TABLE linea_estrategica (
     descripcion TEXT,
     plan_nacional VARCHAR,
     plan_departamental VARCHAR,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ================================================================
@@ -119,8 +163,8 @@ CREATE TABLE programa (
     linea_estrategica_id INTEGER NOT NULL,
     nombre VARCHAR NOT NULL,
     descripcion TEXT,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT fk_programa_linea_estrategica
         FOREIGN KEY (linea_estrategica_id) REFERENCES linea_estrategica(id)
 );
@@ -135,8 +179,8 @@ CREATE TABLE meta_resultado (
     año_linea_base INTEGER,
     meta_cuatrienio VARCHAR,
     fuente VARCHAR,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT fk_meta_resultado_linea_estrategica
         FOREIGN KEY (linea_estrategica_id) REFERENCES linea_estrategica(id)
 );
@@ -156,8 +200,8 @@ CREATE TABLE meta_producto (
     orientacion VARCHAR,
     sector VARCHAR,
     total_cuatrienio VARCHAR,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT fk_meta_producto_caracterizacion_mga
         FOREIGN KEY (caracterizacion_mga_id) REFERENCES caracterizacion_mga(id),
     CONSTRAINT fk_meta_producto_area
@@ -178,10 +222,10 @@ CREATE TABLE usuario_area (
     usuario_id INTEGER NOT NULL,
     area_id INTEGER NOT NULL,
     rol_id INTEGER NOT NULL,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT fk_usuario_area_usuario
-        FOREIGN KEY (usuario_id) REFERENCES usuario(id),
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
     CONSTRAINT fk_usuario_area_area
         FOREIGN KEY (area_id) REFERENCES area(id),
     CONSTRAINT fk_usuario_area_rol
@@ -195,9 +239,9 @@ CREATE TABLE financiacion_periodo (
     meta_id INTEGER NOT NULL,
     periodo VARCHAR,
     fuente_financiacion VARCHAR,
-    valor DECIMAL(15,2),
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW(),
+    valor NUMERIC(15,2),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT fk_financiacion_periodo_fuente
         FOREIGN KEY (fuente_id) REFERENCES fuentes_financiacion(id),
     CONSTRAINT fk_financiacion_periodo_meta
@@ -209,23 +253,21 @@ CREATE TABLE metas_resultado_producto (
     id SERIAL PRIMARY KEY,
     meta_producto_id INTEGER NOT NULL,
     meta_resultado_id INTEGER NOT NULL,
-    create_at TIMESTAMP DEFAULT NOW(),
-    update_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT fk_metas_resultado_producto_meta_producto
         FOREIGN KEY (meta_producto_id) REFERENCES meta_producto(id),
     CONSTRAINT fk_metas_resultado_producto_meta_resultado
-        FOREIGN KEY (meta_resultado_id) REFERENCES meta_resultado(id),
-    CONSTRAINT unique_meta_producto_resultado
-        UNIQUE (meta_producto_id, meta_resultado_id)
+        FOREIGN KEY (meta_resultado_id) REFERENCES meta_resultado(id)
 );
 
 -- ================================================================
--- 6. TRIGGERS PARA UPDATE_AT
+-- 6. TRIGGERS PARA UPDATED_AT
 -- ================================================================
 
--- Trigger para usuario
-CREATE TRIGGER update_usuario_updated_at
-    BEFORE UPDATE ON usuario
+-- Trigger para usuarios
+CREATE TRIGGER update_usuarios_updated_at
+    BEFORE UPDATE ON usuarios
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger para rol
@@ -293,16 +335,11 @@ CREATE TRIGGER update_metas_resultado_producto_updated_at
     BEFORE UPDATE ON metas_resultado_producto
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ================================================================
--- 7. COMENTARIOS PARA DOCUMENTACIÓN
--- ================================================================
+-- Trigger para entidad_territorial
+CREATE TRIGGER update_entidad_territorial_updated_at
+    BEFORE UPDATE ON entidad_territorial
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Comentarios en tablas principales
-COMMENT ON TABLE linea_estrategica IS 'Tabla que almacena las líneas estratégicas del plan de desarrollo';
-COMMENT ON TABLE programa IS 'Programas asociados a cada línea estratégica';
-COMMENT ON TABLE meta_resultado IS 'Metas de resultado asociadas a líneas estratégicas';
-COMMENT ON TABLE meta_producto IS 'Metas de producto con sus caracterizaciones';
-COMMENT ON TABLE usuario_area IS 'Relación entre usuarios, áreas y roles';
-COMMENT ON TABLE financiacion_periodo IS 'Financiación por periodo para cada meta de producto';
-
+-- ================================================================
+-- FIN DEL SCRIPT
 -- ================================================================
