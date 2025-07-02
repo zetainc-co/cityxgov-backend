@@ -105,39 +105,6 @@ CREATE TABLE caracterizacion_mga (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabla: entidad_territorial
-CREATE TABLE entidad_territorial (
-    id SERIAL PRIMARY KEY,
-    -- Datos básicos de la entidad
-    nombre_entidad VARCHAR NOT NULL,
-    nombre_representante_legal VARCHAR NOT NULL,
-    nit VARCHAR NOT NULL UNIQUE,
-
-    -- Información municipal
-    nombre_municipio VARCHAR NOT NULL,
-    departamento VARCHAR NOT NULL,
-    region VARCHAR,
-    categoria_municipal VARCHAR NOT NULL,
-    poblacion INTEGER NOT NULL,
-
-    -- Ubicación Google Maps
-    latitud DECIMAL(10, 8),
-    longitud DECIMAL(11, 8),
-    direccion_completa TEXT,
-
-    -- Archivos (URLs de Supabase Storage)
-    logo_municipio TEXT,
-    imagenes TEXT[], -- Array de URLs
-    mapa_municipio TEXT,
-
-    -- Organigrama (estructura JSON)
-    organigrama JSONB,
-
-    -- Campos de auditoría
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- ================================================================
 -- 3. TABLAS PRINCIPALES
 -- ================================================================
@@ -333,11 +300,6 @@ CREATE TRIGGER update_financiacion_periodo_updated_at
 -- Trigger para metas_resultado_producto
 CREATE TRIGGER update_metas_resultado_producto_updated_at
     BEFORE UPDATE ON metas_resultado_producto
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Trigger para entidad_territorial
-CREATE TRIGGER update_entidad_territorial_updated_at
-    BEFORE UPDATE ON entidad_territorial
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ================================================================
