@@ -85,7 +85,7 @@ export class AreaService {
     async create(createRequest: AreaRequest): Promise<AreaResponse> {
         try {
             // Validar si el nombre ya existe
-            const { data: existingLinea, error: validationError } =
+            const { data: existingNombre, error: validationError } =
             await this.supabaseService.clientAdmin
             .from('area')
             .select('id')
@@ -96,11 +96,33 @@ export class AreaService {
                 throw new InternalServerErrorException('Error al validar nombre de área');
             }
 
-            if (existingLinea) {
+            if (existingNombre) {
                 return {
                     status: false,
                     message: 'Ya existe una área con este nombre',
                     error: 'Nombre duplicado'
+                }
+            }
+
+            // Validar si el teléfono ya existe
+            if (createRequest.telefono && createRequest.telefono.trim().length > 0) {
+                const { data: existingTelefono, error: telefonoValidationError } =
+                await this.supabaseService.clientAdmin
+                .from('area')
+                .select('id')
+                .eq('telefono', createRequest.telefono.trim())
+                .maybeSingle();
+
+                if (telefonoValidationError) {
+                    throw new InternalServerErrorException('Error al validar teléfono de área');
+                }
+
+                if (existingTelefono) {
+                    return {
+                        status: false,
+                        message: 'Ya existe una área con este número de teléfono',
+                        error: 'Teléfono duplicado'
+                    }
                 }
             }
 
@@ -160,7 +182,7 @@ export class AreaService {
             }
 
             // Validar si el nombre ya existe
-            const { data: existingLinea, error: validationError } =
+            const { data: existingNombre, error: validationError } =
             await this.supabaseService.clientAdmin
             .from('area')
             .select('id')
@@ -172,7 +194,7 @@ export class AreaService {
                 throw new InternalServerErrorException('Error al validar nombre de área');
             }
 
-            if (existingLinea) {
+            if (existingNombre) {
                 return {
                     status: false,
                     message: 'Ya existe otra área con este nombre',
@@ -181,10 +203,38 @@ export class AreaService {
                 }
             }
 
+            // Validar si el teléfono ya existe (solo si se proporciona y es diferente al actual)
+            if (createRequest.telefono && createRequest.telefono.trim().length > 0) {
+                const { data: existingTelefono, error: telefonoValidationError } =
+                await this.supabaseService.clientAdmin
+                .from('area')
+                .select('id')
+                .eq('telefono', createRequest.telefono.trim())
+                .neq('id', id)
+                .maybeSingle();
+
+                if (telefonoValidationError) {
+                    throw new InternalServerErrorException('Error al validar teléfono de área');
+                }
+
+                if (existingTelefono) {
+                    return {
+                        status: false,
+                        message: 'Ya existe otra área con este número de teléfono',
+                        error: 'Teléfono duplicado',
+                        data: []
+                    }
+                }
+            }
+
             // Verificar si hay cambios
             if (
-                existingData.nombre === createRequest.nombre && 
-                existingData.descripcion === createRequest.descripcion
+                existingData.nombre === createRequest.nombre &&
+                existingData.descripcion === createRequest.descripcion &&
+                existingData.telefono === createRequest.telefono &&
+                existingData.correo === createRequest.correo &&
+                existingData.direccion === createRequest.direccion &&
+                existingData.responsable === createRequest.responsable
             ) {
                 return {
                     status: false,
@@ -200,6 +250,10 @@ export class AreaService {
                 .update({
                     nombre: createRequest.nombre,
                     descripcion: createRequest.descripcion,
+                    telefono: createRequest.telefono,
+                    correo: createRequest.correo,
+                    direccion: createRequest.direccion,
+                    responsable: createRequest.responsable,
                 })
                 .eq('id', id)
                 .single();
