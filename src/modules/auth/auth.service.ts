@@ -76,7 +76,7 @@ export class AuthService {
         const token = jwt.sign(
             { id: user.identificacion, roles },
             process.env.JWT_SECRET as string,
-            { expiresIn: '24h' },
+                { expiresIn: '24h' },
         );
 
         await this.supabaseService.clientAdmin
@@ -231,7 +231,7 @@ export class AuthService {
                 type: 'password_reset',
             },
             process.env.JWT_SECRET as string,
-            { expiresIn: '2m' },
+            { expiresIn: '24h' },
         );
 
         return {
