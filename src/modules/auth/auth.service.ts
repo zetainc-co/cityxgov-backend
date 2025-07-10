@@ -58,25 +58,55 @@ export class AuthService {
     async login(loginDto: LoginDto) {
         const user = await this.validateUser(loginDto.correo, loginDto.contrasena);
 
-        // Obtener roles desde usuario_area
-        const { data: rolesData, error: rolesError } = await this.supabaseService.clientAdmin
+        // Obtener roles y áreas desde usuario_area
+        const { data: userAreaData, error: userAreaError } = await this.supabaseService.clientAdmin
             .from('usuario_area')
-            .select('rol:rol_id(nombre)')
+            .select(`
+                rol:rol_id(nombre),
+                area:area_id(id, nombre, modulos)
+            `)
             .eq('usuario_id', user.id);
 
-        if (rolesError) {
+        if (userAreaError) {
             throw new InternalServerErrorException({
                 status: false,
-                message: 'Error al obtener roles del usuario',
+                message: 'Error al obtener roles y áreas del usuario',
                 data: [],
             });
         }
 
-        const roles = rolesData ? rolesData.map((ua: any) => ua.rol?.nombre).filter(Boolean) : [];
+        const roles = userAreaData ? userAreaData.map((ua: any) => ua.rol?.nombre).filter(Boolean) : [];
+        const areas = userAreaData ? userAreaData.map((ua: any) => ua.area).filter(Boolean) : [];
+
+
+        // Obtener módulos únicos de todas las áreas del usuario
+        const areaModulos = areas.reduce((acc: any, area: any) => {
+            if (area.modulos) {
+                Object.keys(area.modulos).forEach(moduloKey => {
+                    if (area.modulos[moduloKey].activo) {
+                        if (!acc[moduloKey]) {
+                            acc[moduloKey] = {
+                                activo: true,
+                                submodulos: []
+                            };
+                        }
+                        // Combinar submódulos de todas las áreas
+                        const submodulos = area.modulos[moduloKey].submodulos || [];
+                        acc[moduloKey].submodulos = [...new Set([...acc[moduloKey].submodulos, ...submodulos])];
+                    }
+                });
+            }
+            return acc;
+        }, {});
+
         const token = jwt.sign(
-            { id: user.identificacion, roles },
+            {
+                id: user.identificacion,
+                roles,
+                area_modulos: areaModulos
+            },
             process.env.JWT_SECRET as string,
-                { expiresIn: '24h' },
+            { expiresIn: '24h' },
         );
 
         await this.supabaseService.clientAdmin
@@ -95,6 +125,11 @@ export class AuthService {
                     identificacion: user.identificacion,
                     telefono: user.telefono,
                     roles,
+                    areas: areas.map(area => ({
+                        id: area.id,
+                        nombre: area.nombre
+                    })),
+                    area_modulos: areaModulos,
                     avatar: user.avatar,
                     cargo: user.cargo,
                 },

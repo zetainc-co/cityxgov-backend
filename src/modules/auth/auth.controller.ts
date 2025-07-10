@@ -57,4 +57,17 @@ export class AuthController {
   ) {
     return this.authService.changePassword(req.user.identificacion, body.newPassword);
   }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@Req() req) {
+    return {
+      status: true,
+      message: 'Perfil obtenido correctamente',
+      data: {
+        user: req.user,
+        modulos_disponibles: req.user.area_modulos || {}
+      }
+    };
+  }
 }
