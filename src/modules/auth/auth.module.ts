@@ -12,7 +12,7 @@ import { EmailService } from '../../config/email/email.service';
     JwtModule.registerAsync({
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: '1d' },
+        signOptions: { expiresIn: '24h' },
       }),
       inject: [ConfigService],
     }),

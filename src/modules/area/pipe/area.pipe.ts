@@ -91,6 +91,11 @@ export class ValidateAreaPipe implements PipeTransform<AreaRequest> {
       }
     }
 
+    // Validación de módulos - Requiere al menos un módulo
+    if (!value.modulos || typeof value.modulos !== 'object' || Object.keys(value.modulos).length === 0) {
+      throw new BadRequestException('Debe asignar al menos un módulo al área');
+    }
+
     return value;
   }
 }

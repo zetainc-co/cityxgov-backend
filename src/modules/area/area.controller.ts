@@ -28,12 +28,19 @@ export class AreaController {
         return this.areaService.findAll();
     }
 
+    @Get('modulos')
+    @Roles('superadmin', 'admin')
+    getModulos() {
+        return this.areaService.getModulos();
+    }
+
     @Get(':id')
     @Roles('superadmin', 'admin')
     @UsePipes(ValidateAreaPipe)
     findOne(@Param('id') id: number) {
         return this.areaService.findOne(id);
     }
+
 
     @Post()
     @Roles('superadmin')
