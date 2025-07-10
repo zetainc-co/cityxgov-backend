@@ -4,9 +4,9 @@
 -- Archivo: database_script.sql
 -- Base de datos: Supabase
 -- Fecha: 2025-01-21
--- Actualizado: 2025-06-30
+-- Actualizado: 2025-01-21
 -- Autor: Yedixon Ramones
--- Versión: 1.0.0
+-- Versión: 1.1.0 (Actualizado con nuevos campos y tabla entidad_territorial)
 -- ================================================================
 
 -- ================================================================
@@ -52,11 +52,16 @@ CREATE TABLE rol (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabla: area
+-- Tabla: area (ACTUALIZADA con nuevos campos)
 CREATE TABLE area (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
     descripcion TEXT,
+    telefono VARCHAR,
+    correo VARCHAR,
+    direccion VARCHAR,
+    responsable VARCHAR,
+    modulos JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -105,6 +110,29 @@ CREATE TABLE caracterizacion_mga (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabla: entidad_territorial (NUEVA TABLA)
+CREATE TABLE entidad_territorial (
+    id SERIAL PRIMARY KEY,
+    nombre_entidad VARCHAR NOT NULL,
+    nombre_representante VARCHAR,
+    nit VARCHAR,
+    nombre_municipio VARCHAR,
+    departamento VARCHAR,
+    region VARCHAR,
+    categoria_municipal VARCHAR,
+    poblacion INTEGER,
+    latitud NUMERIC(10,8),
+    longitud NUMERIC(11,8),
+    direccion_completa TEXT,
+    tipo_municipio VARCHAR,
+    imagenes TEXT,
+    mapa_municipio TEXT,
+    organigrama JSONB,
+    descripcion TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ================================================================
 -- 3. TABLAS PRINCIPALES
 -- ================================================================
@@ -136,12 +164,13 @@ CREATE TABLE programa (
         FOREIGN KEY (linea_estrategica_id) REFERENCES linea_estrategica(id)
 );
 
--- Tabla: meta_resultado
+-- Tabla: meta_resultado (ACTUALIZADA con campo descripcion)
 CREATE TABLE meta_resultado (
     id SERIAL PRIMARY KEY,
     linea_estrategica_id INTEGER NOT NULL,
     nombre VARCHAR NOT NULL,
     indicador VARCHAR,
+    descripcion TEXT,
     linea_base VARCHAR,
     año_linea_base INTEGER,
     meta_cuatrienio VARCHAR,
@@ -265,6 +294,11 @@ CREATE TRIGGER update_fuentes_financiacion_updated_at
 -- Trigger para caracterizacion_mga
 CREATE TRIGGER update_caracterizacion_mga_updated_at
     BEFORE UPDATE ON caracterizacion_mga
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger para entidad_territorial (NUEVO TRIGGER)
+CREATE TRIGGER update_entidad_territorial_updated_at
+    BEFORE UPDATE ON entidad_territorial
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger para linea_estrategica
