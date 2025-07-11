@@ -4,7 +4,8 @@ import {
     BadRequestException,
 } from '@nestjs/common';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { AreaResponse, Area, AreaRequest } from './dto/area.dto';
+import { AreaResponse, AreaRequest, ModulosResponse } from './dto/area.dto';
+import { validarModulosArea, MODULOS_DISPONIBLES } from '../../utils/modules.constants';
 
 @Injectable()
 export class AreaService {
@@ -81,6 +82,24 @@ export class AreaService {
         }
     }
 
+    // Obtiene los módulos disponibles
+    getModulos(): ModulosResponse {
+        try {
+            return {
+                status: true,
+                message: 'Módulos disponibles obtenidos correctamente',
+                data: MODULOS_DISPONIBLES
+            };
+        } catch (error) {
+            return {
+                status: false,
+                message: 'Error al obtener módulos disponibles',
+                error: error.message,
+                data: []
+            };
+        }
+    }
+
     // Crea una nueva área
     async create(createRequest: AreaRequest): Promise<AreaResponse> {
         try {
@@ -126,11 +145,21 @@ export class AreaService {
                 }
             }
 
+            // Validar y estructurar módulos (solo los enviados)
+            const modulosValidados = validarModulosArea(createRequest.modulos);
+
+            // Crear objeto para insertar
+            const areaData = {
+                ...createRequest,
+                modulos: Object.keys(modulosValidados).length > 0 ? modulosValidados : null
+            };
+
             // Crea la área
             const { data, error } =
                 await this.supabaseService.clientAdmin
                     .from('area')
-                    .insert(createRequest)
+                    .insert(areaData)
+                    .select('*')
                     .single();
 
             if (error) {
@@ -227,14 +256,21 @@ export class AreaService {
                 }
             }
 
+            // Validar y estructurar módulos (solo los enviados)
+            const modulosValidados = validarModulosArea(createRequest.modulos);
+
             // Verificar si hay cambios
+            const modulosActuales = existingData.modulos || {};
+            const modulosChanged = JSON.stringify(modulosActuales) !== JSON.stringify(modulosValidados);
+
             if (
                 existingData.nombre === createRequest.nombre &&
                 existingData.descripcion === createRequest.descripcion &&
                 existingData.telefono === createRequest.telefono &&
                 existingData.correo === createRequest.correo &&
                 existingData.direccion === createRequest.direccion &&
-                existingData.responsable === createRequest.responsable
+                existingData.responsable === createRequest.responsable &&
+                !modulosChanged
             ) {
                 return {
                     status: false,
@@ -254,8 +290,10 @@ export class AreaService {
                     correo: createRequest.correo,
                     direccion: createRequest.direccion,
                     responsable: createRequest.responsable,
+                    modulos: modulosValidados,
                 })
                 .eq('id', id)
+                .select('*')
                 .single();
 
             if (error) {

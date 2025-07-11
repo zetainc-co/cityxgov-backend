@@ -54,14 +54,6 @@ export class ValidateEntidadTerritorialPipe implements PipeTransform {
     if (!value.nit || value.nit.trim() === '') {
       throw new BadRequestException('El NIT es requerido');
     }
-    if (value.nit.trim().length > 30) {
-      throw new BadRequestException('El NIT no puede tener más de 30 caracteres');
-    }
-    // Validar formato NIT (números y guión para dígito verificador)
-    const nitRegex = /^\d+(-\d)?$/;
-    if (!nitRegex.test(value.nit.trim())) {
-      throw new BadRequestException('El NIT debe tener formato válido (ej: 8999999-1)');
-    }
 
     // Validar nombre del municipio
     if (!value.nombre_municipio || value.nombre_municipio.trim() === '') {
