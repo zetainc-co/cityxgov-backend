@@ -192,7 +192,7 @@ CREATE TABLE meta_producto (
     linea_base VARCHAR,
     instrumento_planeacion VARCHAR,
     nombre VARCHAR NOT NULL,
-    valor VARCHAR,
+    meta_numerica VARCHAR,
     orientacion VARCHAR,
     sector VARCHAR,
     total_cuatrienio VARCHAR,
@@ -228,19 +228,32 @@ CREATE TABLE usuario_area (
         FOREIGN KEY (rol_id) REFERENCES rol(id)
 );
 
--- Tabla: financiacion_periodo
-CREATE TABLE financiacion_periodo (
+CREATE TABLE programacion_financiera (
     id SERIAL PRIMARY KEY,
     fuente_id INTEGER NOT NULL,
     meta_id INTEGER NOT NULL,
     periodo VARCHAR,
-    fuente_financiacion VARCHAR,
     valor NUMERIC(15,2),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT fk_financiacion_periodo_fuente
+    CONSTRAINT fk_programacion_financiera_fuente
         FOREIGN KEY (fuente_id) REFERENCES fuentes_financiacion(id),
-    CONSTRAINT fk_financiacion_periodo_meta
+    CONSTRAINT fk_programacion_financiera_meta
+        FOREIGN KEY (meta_id) REFERENCES meta_producto(id)
+);
+
+-- Tabla: financiacion_periodo
+CREATE TABLE programacion_fisica (
+    id SERIAL PRIMARY KEY,
+    fuente_id INTEGER NOT NULL,
+    meta_id INTEGER NOT NULL,
+    periodo VARCHAR,
+    descripcion TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT fk_programacion_fisica_fuente
+        FOREIGN KEY (fuente_id) REFERENCES fuentes_financiacion(id),
+    CONSTRAINT fk_programacion_fisica_meta
         FOREIGN KEY (meta_id) REFERENCES meta_producto(id)
 );
 
@@ -339,3 +352,16 @@ CREATE TRIGGER update_metas_resultado_producto_updated_at
 -- ================================================================
 -- FIN DEL SCRIPT
 -- ================================================================
+
+-- Migración para quitar restricciones de longitud en tabla caracterizacion_mga
+ALTER TABLE caracterizacion_mga
+ALTER COLUMN sector TYPE TEXT,
+ALTER COLUMN programa TYPE TEXT,
+ALTER COLUMN producto TYPE TEXT,
+ALTER COLUMN descripcion_producto TYPE TEXT,
+ALTER COLUMN unidad_medida_producto TYPE TEXT,
+ALTER COLUMN producto_activo TYPE TEXT,
+ALTER COLUMN indicador_producto TYPE TEXT,
+ALTER COLUMN unidad_medida_indicador TYPE TEXT,
+ALTER COLUMN principal TYPE TEXT,
+ALTER COLUMN indicador_producto_activo TYPE TEXT;

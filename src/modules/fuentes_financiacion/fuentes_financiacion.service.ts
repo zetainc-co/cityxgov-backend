@@ -111,7 +111,7 @@ export class FuentesFinanciacionService {
                 data: [],
             };
         }
-    }   
+    }
 
     //Actualiza una fuente de financiación
     async update(id: number, updateRequest: FuentesFinanciacionRequest): Promise<FuentesFinanciacionResponse> {
@@ -139,7 +139,7 @@ export class FuentesFinanciacionService {
             }
 
             //Verifica si hay cambios en la fuente de financiación
-            if (existingData.nombre === updateRequest.nombre && 
+            if (existingData.nombre === updateRequest.nombre &&
                 existingData.descripcion === updateRequest.descripcion
             ) {
                 return {
@@ -206,42 +206,63 @@ export class FuentesFinanciacionService {
                     status: false,
                     message: `No existe una fuente de financiación con el ID ${id}`,
                     error: 'ID no encontrado',
-                    data: [],   
+                    data: [],
                 };
             }
 
-            //Verifica si la fuente de financiación está siendo usada en financiacion periodo
-            const { data: financiacionPeriodo, error: financiacionPeriodoError } = await this.supabaseService.clientAdmin
-                .from('financiacion_periodo')
+            //Verifica si la fuente de financiación está siendo usada en programacion_financiera
+            const { data: programacionFinanciera, error: programacionFinancieraError } = await this.supabaseService.clientAdmin
+                .from('programacion_financiera')
                 .select('id')
                 .eq('fuente_id', id)
                 .limit(1);
 
-            if (financiacionPeriodoError) {
+            if (programacionFinancieraError) {
                 throw new InternalServerErrorException(
-                    'Error al verificar uso de la fuente de financiación'
+                    'Error al verificar uso de la fuente de financiación en programación financiera'
                 );
             }
 
-            if (financiacionPeriodo.length > 0) {
+            if (programacionFinanciera.length > 0) {
                 return {
                     status: false,
-                    message: 'No se puede eliminar la fuente de financiación porque está siendo usada en financiación por periodo',
+                    message: 'No se puede eliminar la fuente de financiación porque está siendo usada en programación financiera',
                     error: 'Fuente de financiación en uso',
                     data: [],
                 };
             }
-            
+
+            //Verifica si la fuente de financiación está siendo usada en programacion_fisica
+            const { data: programacionFisica, error: programacionFisicaError } = await this.supabaseService.clientAdmin
+                .from('programacion_fisica')
+                .select('id')
+                .eq('fuente_id', id)
+                .limit(1);
+
+            if (programacionFisicaError) {
+                throw new InternalServerErrorException(
+                    'Error al verificar uso de la fuente de financiación en programación física'
+                );
+            }
+
+            if (programacionFisica.length > 0) {
+                return {
+                    status: false,
+                    message: 'No se puede eliminar la fuente de financiación porque está siendo usada en programación física',
+                    error: 'Fuente de financiación en uso',
+                    data: [],
+                };
+            }
+
             //Elimina la fuente de financiación
-            const { error: deleteError } = await this.supabaseService.clientAdmin
+            const { error: deletedError } = await this.supabaseService.clientAdmin
                 .from('fuentes_financiacion')
                 .delete()
-                .eq('id', id)
-                .single();
+                .eq('id', id);
 
-            if (deleteError) {
+            if (deletedError) {
                 throw new InternalServerErrorException(
-                    'Error al eliminar fuente de financiación: ' + deleteError.message,
+                    'Error al eliminar fuente de financiación: ' + deletedError.message,
                 );
             }
 
@@ -254,6 +275,7 @@ export class FuentesFinanciacionService {
             if (error instanceof BadRequestException) {
                 throw error;
             }
+
             return {
                 status: false,
                 message: 'Error al eliminar fuente de financiación',

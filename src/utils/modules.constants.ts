@@ -17,7 +17,7 @@ export const MODULOS_DISPONIBLES = [
         id: 'plan-indicativo',
         nombre: 'Plan Indicativo',
         descripcion: 'Gestión del plan indicativo',
-        submodulos: ['lineas-estrategicas', 'programas', 'metas-resultados', 'metas-productos']
+        submodulos: ['lineas-estrategicas', 'programas', 'metas-resultados', 'metas-productos', 'programacion-fisica', 'programacion-financiera']
     },
     {
         id: 'entidad-territorial',
