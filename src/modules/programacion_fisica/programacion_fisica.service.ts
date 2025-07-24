@@ -85,22 +85,6 @@ export class ProgramacionFisicaService {
     // Crea una nueva programacion física
     async create(createRequest: ProgramacionFisicaRequest): Promise<ProgramacionFisicaResponse> {
         try {
-            // Verificar que la fuente de financiación existe
-            const { data: fuenteExists, error: fuenteError } = await this.supabaseService.clientAdmin
-                .from('fuentes_financiacion')
-                .select('id, nombre')
-                .eq('id', createRequest.fuente_id)
-                .single();
-
-            if (fuenteError || !fuenteExists) {
-                return {
-                    status: false,
-                    message: `No existe una fuente de financiación con el ID ${createRequest.fuente_id}`,
-                    error: 'Fuente de financiación no encontrada',
-                    data: [],
-                };
-            }
-
             // Verificar que la meta producto existe
             const { data: metaExists, error: metaError } = await this.supabaseService.clientAdmin
                 .from('meta_producto')
@@ -117,33 +101,38 @@ export class ProgramacionFisicaService {
                 };
             }
 
-            // Verificar que no exista ya una combinación fuente_id + meta_id
-            // const {data: existingRecord, error: checkError} = await this.supabaseService.clientAdmin
-            // .from('programacion_fisica')
-            // .select('id')
-            // .eq('fuente_id', createRequest.fuente_id)
-            // .eq('meta_id', createRequest.meta_id)
-            // .maybeSingle();
+            // Verificar que no exista ya una programación física para esta meta
+            const { data: existingRecord, error: checkError } = await this.supabaseService.clientAdmin
+                .from('programacion_fisica')
+                .select('id')
+                .eq('meta_id', createRequest.meta_id)
+                .maybeSingle();
 
-            // if (checkError && checkError) {
-            //     throw new InternalServerErrorException(
-            //         'Error al verificar duplicados: ' + checkError.message,
-            //     );
-            // }
+            if (checkError && checkError.code !== 'PGRST116') {
+                throw new InternalServerErrorException(
+                    'Error al verificar duplicados: ' + checkError.message,
+                );
+            }
 
-            // if (existingRecord) {
-            //     return {
-            //         status: false,
-            //         message: `Ya existe una programación física para la fuente ${fuenteExists.nombre} y la meta ${metaExists.nombre}`,
-            //         error: 'Combinación duplicada',
-            //         data: [],
-            //     };
-            // }
+            if (existingRecord) {
+                return {
+                    status: false,
+                    message: `Ya existe una programación física para la meta ${metaExists.nombre}`,
+                    error: 'Meta duplicada',
+                    data: [],
+                };
+            }
 
-            // Crear el registro
+            // Calcular el total del cuatrienio
+            const totalCuatrienio = createRequest.periodo_2024 + createRequest.periodo_2025 + createRequest.periodo_2026 + createRequest.periodo_2027;
+
+            // Crear el registro con el total_cuatrienio calculado
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('programacion_fisica')
-                .insert(createRequest)
+                .insert({
+                    ...createRequest,
+                    total_cuatrienio: totalCuatrienio
+                })
                 .select('*')
                 .single();
 
@@ -196,22 +185,6 @@ export class ProgramacionFisicaService {
                 };
             }
 
-            // Verificar que la fuente de financiación existe
-            const { data: fuenteExists, error: fuenteError } = await this.supabaseService.clientAdmin
-                .from('fuentes_financiacion')
-                .select('id, nombre')
-                .eq('id', updateRequest.fuente_id)
-                .single();
-
-            if (fuenteError || !fuenteExists) {
-                return {
-                    status: false,
-                    message: `No existe una fuente de financiación con el ID ${updateRequest.fuente_id}`,
-                    error: 'Fuente de financiación no encontrada',
-                    data: [],
-                };
-            }
-
             // Verificar que la meta producto existe
             const { data: metaExists, error: metaError } = await this.supabaseService.clientAdmin
                 .from('meta_producto')
@@ -228,13 +201,16 @@ export class ProgramacionFisicaService {
                 };
             }
 
+            // Calcular el total del cuatrienio para la comparación
+            const newTotalCuatrienio = updateRequest.periodo_2024 + updateRequest.periodo_2025 + updateRequest.periodo_2026 + updateRequest.periodo_2027;
+
             // Verificar si hay cambios
-            if (existingData.fuente_id === updateRequest.fuente_id &&
-                existingData.meta_id === updateRequest.meta_id &&
+            if (existingData.meta_id === updateRequest.meta_id &&
                 existingData.periodo_2024 === updateRequest.periodo_2024 &&
                 existingData.periodo_2025 === updateRequest.periodo_2025 &&
                 existingData.periodo_2026 === updateRequest.periodo_2026 &&
-                existingData.periodo_2027 === updateRequest.periodo_2027
+                existingData.periodo_2027 === updateRequest.periodo_2027 &&
+                existingData.total_cuatrienio === newTotalCuatrienio
             ) {
                 return {
                     status: false,
@@ -244,36 +220,41 @@ export class ProgramacionFisicaService {
                 };
             }
 
-            // Verificar que no exista ya otra combinación fuente_id + meta_id (si cambió)
-            // if (existingData.fuente_id !== updateRequest.fuente_id || existingData.meta_id !== updateRequest.meta_id) {
-            //     const {data: duplicateCheck, error: duplicateError} = await this.supabaseService.clientAdmin
-            //     .from('programacion_fisica')
-            //     .select('id')
-            //     .eq('fuente_id', updateRequest.fuente_id)
-            //     .eq('meta_id', updateRequest.meta_id)
-            //     .neq('id', id)
-            //     .maybeSingle();
+            // Verificar que no exista ya otra programación física para esta meta (si cambió)
+            if (existingData.meta_id !== updateRequest.meta_id) {
+                const { data: duplicateCheck, error: duplicateError } = await this.supabaseService.clientAdmin
+                    .from('programacion_fisica')
+                    .select('id')
+                    .eq('meta_id', updateRequest.meta_id)
+                    .neq('id', id)
+                    .maybeSingle();
 
-            //     if (duplicateError && duplicateError.code !== 'PGRST116') {
-            //         throw new InternalServerErrorException(
-            //             'Error al verificar duplicados: ' + duplicateError.message,
-            //         );
-            //     }
+                if (duplicateError && duplicateError.code !== 'PGRST116') {
+                    throw new InternalServerErrorException(
+                        'Error al verificar duplicados: ' + duplicateError.message,
+                    );
+                }
 
-            //     if (duplicateCheck) {
-            //         return {
-            //             status: false,
-            //             message: `Ya existe una programación física para la fuente ${fuenteExists.nombre} y la meta ${metaExists.nombre}`,
-            //             error: 'Combinación duplicada',
-            //             data: [],
-            //         };
-            //     }
-            // }
+                if (duplicateCheck) {
+                    return {
+                        status: false,
+                        message: `Ya existe una programación física para la meta ${metaExists.nombre}`,
+                        error: 'Meta duplicada',
+                        data: [],
+                    };
+                }
+            }
 
-            // Actualizar el registro
+            // Calcular el total del cuatrienio para la actualización
+            const totalCuatrienio = updateRequest.periodo_2024 + updateRequest.periodo_2025 + updateRequest.periodo_2026 + updateRequest.periodo_2027;
+
+            // Actualizar el registro con el total_cuatrienio calculado
             const { data: updatedData, error: updateError } = await this.supabaseService.clientAdmin
                 .from('programacion_fisica')
-                .update(updateRequest)
+                .update({
+                    ...updateRequest,
+                    total_cuatrienio: totalCuatrienio
+                })
                 .eq('id', id)
                 .select('*')
                 .single();

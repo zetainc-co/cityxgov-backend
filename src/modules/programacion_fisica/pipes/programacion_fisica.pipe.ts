@@ -22,17 +22,9 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
       });
     }
 
-    const { fuente_id, meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } = value;
+    const { meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } = value;
 
     // Validaciones de campos requeridos
-    if (fuente_id === undefined || fuente_id === null) {
-      throw new BadRequestException({
-        status: false,
-        message: 'El ID de fuente de financiación es requerido',
-        data: [],
-      });
-    }
-
     if (meta_id === undefined || meta_id === null) {
       throw new BadRequestException({
         status: false,
@@ -42,14 +34,6 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
     }
 
     // Validaciones de tipos para IDs
-    if (!Number.isInteger(fuente_id) || fuente_id <= 0) {
-      throw new BadRequestException({
-        status: false,
-        message: 'El ID de fuente de financiación debe ser un número entero positivo',
-        data: [],
-      });
-    }
-
     if (!Number.isInteger(meta_id) || meta_id <= 0) {
       throw new BadRequestException({
         status: false,
@@ -67,7 +51,6 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
     };
 
     return {
-      fuente_id,
       meta_id,
       ...periodos,
     };
@@ -83,7 +66,9 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
     // Convertir a número si es string
     let numericValue: number;
     if (typeof value === 'string') {
-      numericValue = Number(value.trim());
+      // Limpiar el valor de caracteres no numéricos excepto punto y coma
+      const cleanValue = value.replace(/[^\d.,]/g, '').replace(',', '.');
+      numericValue = Number(cleanValue);
     } else {
       numericValue = value;
     }
@@ -106,16 +91,8 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
       });
     }
 
-    // Verificar que sea un entero
-    if (!Number.isInteger(numericValue)) {
-      throw new BadRequestException({
-        status: false,
-        message: `La cantidad del período ${periodo} debe ser un número entero`,
-        data: [],
-      });
-    }
-
-    return numericValue;
+    // Convertir a entero (redondear)
+    return Math.round(numericValue);
   }
 }
 
