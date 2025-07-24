@@ -6,6 +6,7 @@ export interface ProgramacionFinanciera {
   periodo_2025: number;
   periodo_2026: number;
   periodo_2027: number;
+  total_cuatrienio: number;
   created_at: string;
   updated_at: string;
 }

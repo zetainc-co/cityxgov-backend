@@ -117,33 +117,16 @@ export class ProgramacionFinancieraService {
                 };
             }
 
-            // Verificar que no exista ya una combinación fuente_id + meta_id
-            // const {data: existingRecord, error: checkError} = await this.supabaseService.clientAdmin
-            // .from('programacion_financiera')
-            // .select('id')
-            // .eq('fuente_id', createRequest.fuente_id)
-            // .eq('meta_id', createRequest.meta_id)
-            // .maybeSingle();
+            // Calcular el total del cuatrienio
+            const totalCuatrienio = createRequest.periodo_2024 + createRequest.periodo_2025 + createRequest.periodo_2026 + createRequest.periodo_2027;
 
-            // if (checkError && checkError.code !== 'PGRST116') {
-            //     throw new InternalServerErrorException(
-            //         'Error al verificar duplicados: ' + checkError.message,
-            //     );
-            // }
-
-            // if (existingRecord) {
-            //     return {
-            //         status: false,
-            //         message: `Ya existe una programación financiera para la fuente ${fuenteExists.nombre} y la meta ${metaExists.nombre}`,
-            //         error: 'Combinación duplicada',
-            //         data: [],
-            //     };
-            // }
-
-            // Crear el registro
+            // Crear el registro con el total_cuatrienio calculado
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('programacion_financiera')
-                .insert(createRequest)
+                .insert({
+                    ...createRequest,
+                    total_cuatrienio: totalCuatrienio
+                })
                 .select('*')
                 .single();
 
@@ -228,13 +211,17 @@ export class ProgramacionFinancieraService {
                 };
             }
 
+            // Calcular el total del cuatrienio para la comparación
+            const newTotalCuatrienio = updateRequest.periodo_2024 + updateRequest.periodo_2025 + updateRequest.periodo_2026 + updateRequest.periodo_2027;
+
             // Verificar si hay cambios
             if (existingData.fuente_id === updateRequest.fuente_id &&
                 existingData.meta_id === updateRequest.meta_id &&
                 existingData.periodo_2024 === updateRequest.periodo_2024 &&
                 existingData.periodo_2025 === updateRequest.periodo_2025 &&
                 existingData.periodo_2026 === updateRequest.periodo_2026 &&
-                existingData.periodo_2027 === updateRequest.periodo_2027
+                existingData.periodo_2027 === updateRequest.periodo_2027 &&
+                existingData.total_cuatrienio === newTotalCuatrienio
             ) {
                 return {
                     status: false,
@@ -268,10 +255,16 @@ export class ProgramacionFinancieraService {
             //     }
             // }
 
-            // Actualizar el registro
+            // Calcular el total del cuatrienio para la actualización
+            const totalCuatrienio = updateRequest.periodo_2024 + updateRequest.periodo_2025 + updateRequest.periodo_2026 + updateRequest.periodo_2027;
+
+            // Actualizar el registro con el total_cuatrienio calculado
             const { data: updatedData, error: updateError } = await this.supabaseService.clientAdmin
                 .from('programacion_financiera')
-                .update(updateRequest)
+                .update({
+                    ...updateRequest,
+                    total_cuatrienio: totalCuatrienio
+                })
                 .eq('id', id)
                 .select('*')
                 .single();

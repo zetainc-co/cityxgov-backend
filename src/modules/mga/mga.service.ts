@@ -163,7 +163,7 @@ export class MgaService {
         const errors: string[] = [];
 
         const validatedData = data.map((row, index) => {
-                const rowNumber = index + 2; // +2 porque índice 0 es fila 1, pero hay encabezados
+            const rowNumber = index + 2; // +2 porque índice 0 es fila 1, pero hay encabezados
             const record: CreateMgaDto = {};
 
             allowedFields.forEach((field) => {
@@ -171,7 +171,6 @@ export class MgaService {
                 if (value === undefined || value === null || String(value).trim() === '') {
                     record[field] = null;
                 } else if (field === 'codigo_indicador') {
-                    // Este campo sigue siendo INTEGER
                     const num = Number(value);
                     if (isNaN(num)) {
                         record[field] = null; // Si no es número, guardar como null
@@ -221,15 +220,13 @@ export class MgaService {
                 if (value === null || value === undefined || String(value).trim() === '') {
                     validatedData[field] = null;
                 } else if (field === 'codigo_indicador') {
-                    // Este campo sigue siendo INTEGER
                     const num = Number(value);
                     if (isNaN(num)) {
                         validatedData[field] = null; // Si no es número, guardar como null
-                } else {
+                    } else {
                         validatedData[field] = num;
                     }
                 } else {
-                    // Campos de texto sin restricción de longitud
                     validatedData[field] = String(value).trim();
                 }
             }
@@ -247,10 +244,9 @@ export class MgaService {
     // Insertar datos en la base de datos en lotes
     private async createMgaRecords(mgaRecords: CreateMgaDto[]): Promise<any[]> {
         try {
-            const batchSize = 500; // Mismo tamaño de lote para consistencia
+            const batchSize = 500; // Inserción de 500 registros por lote
             const allInsertedData: any[] = [];
 
-            console.log(`🔄 [BACKEND] Insertando ${mgaRecords.length} registros en lotes de ${batchSize}`);
 
             // Dividir en lotes y procesar cada uno
             for (let i = 0; i < mgaRecords.length; i += batchSize) {
@@ -264,7 +260,6 @@ export class MgaService {
                     .select();
 
                 if (error) {
-                    console.error(`❌ [BACKEND] Error en lote ${batchNumber}:`, error);
                     throw new BadRequestException(
                         `Error insertando lote ${batchNumber}: ${error.message}`,
                     );
@@ -272,11 +267,9 @@ export class MgaService {
 
                 if (data) {
                     allInsertedData.push(...data);
-                    console.log(`✅ [BACKEND] Lote ${batchNumber}/${totalBatches} insertado (${data.length} registros)`);
                 }
             }
 
-            console.log(`🎉 [BACKEND] Inserción completada: ${allInsertedData.length} registros`);
             return allInsertedData;
         } catch (error) {
             if (error instanceof BadRequestException) {
@@ -306,7 +299,6 @@ export class MgaService {
             const { data, error, count } = await query;
 
             if (error) {
-                console.error('❌ [BACKEND] Error obteniendo datos:', error);
                 throw new BadRequestException(
                     `Error obteniendo datos: ${error.message}`,
                 );
@@ -322,7 +314,6 @@ export class MgaService {
                 totalPages: limit ? Math.ceil((count || 0) / limit) : 1
             };
         } catch (error) {
-            console.error('❌ [BACKEND] Error inesperado:', error);
             if (error instanceof BadRequestException) {
                 throw error;
             }
@@ -337,7 +328,7 @@ export class MgaService {
         try {
             const allRecords: any[] = [];
             let from = 0;
-            const batchSize = 500; // Reducido de 1000 a 500 para mejor performance
+            const batchSize = 500; // Inserción de 500 registros por lote
             let hasMore = true;
 
             while (hasMore) {
@@ -348,7 +339,6 @@ export class MgaService {
                     .range(from, from + batchSize - 1);
 
                 if (error) {
-                    console.error('❌ [BACKEND] Error obteniendo lote:', error);
                     throw new BadRequestException(`Error obteniendo datos: ${error.message}`);
                 }
 
@@ -361,15 +351,47 @@ export class MgaService {
                 }
             }
 
-            console.log(`✅ [BACKEND] ${allRecords.length} registros MGA enviados al frontend`);
             return allRecords;
         } catch (error) {
-            console.error('❌ [BACKEND] Error inesperado:', error);
             if (error instanceof BadRequestException) {
                 throw error;
             }
             throw new BadRequestException(
                 `Error inesperado obteniendo todos los datos: ${error.message}`,
+            );
+        }
+    }
+
+    // Método para buscar códigos MGA con sugerencias
+    async searchMga(searchTerm: string, limit: number = 50): Promise<any[]> {
+        try {
+            // Si no hay término de búsqueda, retornar array vacío
+            if (!searchTerm || !searchTerm.trim()) {
+                return [];
+            }
+
+            const term = searchTerm.trim();
+
+            // Usar la función RPC personalizada de Supabase
+            const { data, error } = await this.supabaseService.clientAdmin
+                .rpc('search_mga_codes', {
+                    search_term: term,
+                    max_results: limit
+                });
+
+            if (error) {
+                throw new BadRequestException(
+                    `Error en búsqueda: ${error.message}`,
+                );
+            }
+
+            return data || [];
+        } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new BadRequestException(
+                `Error inesperado en búsqueda: ${error.message}`,
             );
         }
     }
@@ -389,7 +411,6 @@ export class MgaService {
                         `No se encontró el registro MGA con ID: ${id}`,
                     );
                 }
-                console.error('Error obteniendo registro:', error);
                 throw new BadRequestException(
                     `Error obteniendo registro: ${error.message}`,
                 );

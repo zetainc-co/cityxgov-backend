@@ -45,17 +45,25 @@ export class MgaController {
     }
 
     @Get('paginated')
-    @Roles('admin', 'superadmin')
+    @Roles('admin', 'superadmin', 'user')
     async findAllPaginated(
         @Query('page') page: string = '1',
-        @Query('limit') limit: string = '50'
+        @Query('limit') limit: string = '10'
     ) {
         const pageNum = parseInt(page) || 1;
-        const limitNum = parseInt(limit) || 50;
-
-        console.log(`🚀 [CONTROLLER] Petición paginada - Página: ${pageNum}, Límite: ${limitNum}`);
+        const limitNum = parseInt(limit) || 10;
         const result = await this.mgaService.findAll(pageNum, limitNum);
-        console.log(`📤 [CONTROLLER] Enviando página ${pageNum} con ${result.data.length} registros de ${result.total} totales`);
+        return result;
+    }
+
+    @Get('search')
+    @Roles('admin', 'superadmin')
+    async searchMga(
+        @Query('q') searchTerm: string = '',
+        @Query('limit') limit: string = '50'
+    ) {
+        const limitNum = parseInt(limit) || 50;
+        const result = await this.mgaService.searchMga(searchTerm, limitNum);
         return result;
     }
 
