@@ -10,64 +10,64 @@ import { SupabaseService } from 'src/config/supabase/supabase.service';
 export class MetaProductoService {
     constructor(private supabaseService: SupabaseService) { }
 
-      // Obtiene todos los meta_producto con sus relaciones
-  async findAll(): Promise<MetaProductoResponse> {
-    try {
-      const { data, error } = await this.supabaseService.clientAdmin
-        .from('meta_producto')
-        .select('*')
-        .order('created_at', { ascending: false });
+    // Obtiene todos los meta_producto con sus relaciones
+    async findAll(): Promise<MetaProductoResponse> {
+        try {
+            const { data, error } = await this.supabaseService.clientAdmin
+                .from('meta_producto')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-      if (error) {
-        throw new InternalServerErrorException(
-          'Error al obtener meta productos: ' + error.message,
-        );
-      }
+            if (error) {
+                throw new InternalServerErrorException(
+                    'Error al obtener meta productos: ' + error.message,
+                );
+            }
 
-      // Para cada meta_producto, obtener solo los IDs de sus meta_resultados
-      const metaProductosWithIds = await Promise.all(
-        data.map(async (metaProducto) => {
-          const { data: metaResultados, error: metaResultadosError } = 
-            await this.supabaseService.clientAdmin
-              .from('metas_resultado_producto')
-              .select('meta_resultado_id')
-              .eq('meta_producto_id', metaProducto.id);
+            // Para cada meta_producto, obtener solo los IDs de sus meta_resultados
+            const metaProductosWithIds = await Promise.all(
+                data.map(async (metaProducto) => {
+                    const { data: metaResultados, error: metaResultadosError } =
+                        await this.supabaseService.clientAdmin
+                            .from('metas_resultado_producto')
+                            .select('meta_resultado_id')
+                            .eq('meta_producto_id', metaProducto.id);
 
-          if (metaResultadosError) {
-            console.error(`Error obteniendo meta_resultados para meta_producto ${metaProducto.id}:`, metaResultadosError);
+                    if (metaResultadosError) {
+                        console.error(`Error obteniendo meta_resultados para meta_producto ${metaProducto.id}:`, metaResultadosError);
+                        return {
+                            ...metaProducto,
+                            meta_resultado_ids: []
+                        };
+                    }
+
+                    return {
+                        ...metaProducto,
+                        meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
+                    };
+                })
+            );
+
             return {
-              ...metaProducto,
-              meta_resultado_ids: []
+                status: true,
+                message: 'Meta productos encontrados',
+                data: metaProductosWithIds,
+                error: null,
             };
-          }
 
-          return {
-            ...metaProducto,
-            meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
-          };
-        })
-      );
+        } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
 
-      return {
-        status: true,
-        message: 'Meta productos encontrados',
-        data: metaProductosWithIds,
-        error: null,
-      };
-
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      return {
-        status: false,
-        message: 'Error al obtener meta productos',
-        error: error.message,
-        data: [],
-      };
+            return {
+                status: false,
+                message: 'Error al obtener meta productos',
+                error: error.message,
+                data: [],
+            };
+        }
     }
-  }
 
     // Obtiene un meta_producto por su id
     async findOne(id: number): Promise<MetaProductoResponse> {
@@ -138,23 +138,23 @@ export class MetaProductoService {
             // Validar que existan los registros relacionados
             await this.validateRelatedRecords(createRequest);
 
-            // Verificar que el código no exista
+            // Verificar que el nombre no exista
             const { data: existingCode, error: codeError } =
                 await this.supabaseService.clientAdmin
                     .from('meta_producto')
                     .select('id')
-                    .eq('codigo', createRequest.codigo.trim())
+                    .eq('nombre', createRequest.nombre.trim())
                     .maybeSingle();
 
             if (codeError) {
-                throw new InternalServerErrorException('Error al validar código');
+                throw new InternalServerErrorException('Error al validar nombre');
             }
 
             if (existingCode) {
                 return {
                     status: false,
-                    message: 'Ya existe un meta producto con este código',
-                    error: 'Código duplicado',
+                    message: 'Ya existe un meta producto con este nombre',
+                    error: 'Nombre duplicado',
                     data: [],
                 };
             }
@@ -168,13 +168,13 @@ export class MetaProductoService {
                         area_id: createRequest.area_id,
                         ods_id: createRequest.ods_id,
                         enfoque_poblacional_id: createRequest.enfoque_poblacional_id,
-                        codigo: createRequest.codigo.trim(),
+                        // codigo: createRequest.codigo.trim(),
                         linea_base: createRequest.linea_base.trim(),
                         instrumento_planeacion: createRequest.instrumento_planeacion.trim(),
                         nombre: createRequest.nombre.trim(),
-                        valor: createRequest.valor.trim(),
+                        meta_numerica: createRequest.meta_numerica.trim(),
                         orientacion: createRequest.orientacion.trim(),
-                        sector: createRequest.sector.trim(),
+                        // sector: createRequest.sector.trim(),
                         total_cuatrienio: createRequest.total_cuatrienio.trim(),
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -188,33 +188,33 @@ export class MetaProductoService {
                 );
             }
 
-                  // Crear las relaciones muchos a muchos
-      await this.createMetaResultadoRelations(metaProducto.id, createRequest.meta_resultado_ids);
+            // Crear las relaciones muchos a muchos
+            await this.createMetaResultadoRelations(metaProducto.id, createRequest.meta_resultado_ids);
 
-      // Obtener solo los IDs de meta_resultados relacionados
-      const { data: metaResultados, error: metaResultadosError } = 
-        await this.supabaseService.clientAdmin
-          .from('metas_resultado_producto')
-          .select('meta_resultado_id')
-          .eq('meta_producto_id', metaProducto.id);
+            // Obtener solo los IDs de meta_resultados relacionados
+            const { data: metaResultados, error: metaResultadosError } =
+                await this.supabaseService.clientAdmin
+                    .from('metas_resultado_producto')
+                    .select('meta_resultado_id')
+                    .eq('meta_producto_id', metaProducto.id);
 
-      if (metaResultadosError) {
-        throw new InternalServerErrorException(
-          'Error al obtener meta resultados relacionados: ' + metaResultadosError.message,
-        );
-      }
+            if (metaResultadosError) {
+                throw new InternalServerErrorException(
+                    'Error al obtener meta resultados relacionados: ' + metaResultadosError.message,
+                );
+            }
 
-      // Agregar solo los IDs de meta_resultados al resultado
-      const result = {
-        ...metaProducto,
-        meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
-      };
+            // Agregar solo los IDs de meta_resultados al resultado
+            const result = {
+                ...metaProducto,
+                meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
+            };
 
-      return {
-        status: true,
-        message: 'Meta producto creado correctamente',
-        data: [result],
-      };
+            return {
+                status: true,
+                message: 'Meta producto creado correctamente',
+                data: [result],
+            };
 
         } catch (error) {
             if (error instanceof BadRequestException) {
@@ -257,30 +257,30 @@ export class MetaProductoService {
             // Validar que existan los registros relacionados
             await this.validateRelatedRecords(updateRequest);
 
-            // Verificar que el código no exista en otro registro
+            // Verificar que el nombre no exista en otro registro
             const { data: duplicateCode, error: duplicateError } =
                 await this.supabaseService.clientAdmin
                     .from('meta_producto')
                     .select('id')
-                    .eq('codigo', updateRequest.codigo.trim())
+                    .eq('nombre', updateRequest.nombre.trim())
                     .neq('id', id)
                     .maybeSingle();
 
             if (duplicateError) {
-                throw new InternalServerErrorException('Error al validar código duplicado');
+                throw new InternalServerErrorException('Error al validar nombre duplicado');
             }
 
             if (duplicateCode) {
                 return {
                     status: false,
-                    message: 'Ya existe un meta producto con este código',
-                    error: 'Código duplicado',
+                    message: 'Ya existe un meta producto con este nombre',
+                    error: 'Nombre duplicado',
                     data: [],
                 };
             }
 
             // Obtener meta_resultados actuales para comparar
-            const { data: currentMetaResultados, error: currentMetaError } = 
+            const { data: currentMetaResultados, error: currentMetaError } =
                 await this.supabaseService.clientAdmin
                     .from('metas_resultado_producto')
                     .select('meta_resultado_id')
@@ -302,50 +302,50 @@ export class MetaProductoService {
                 existing.area_id !== updateRequest.area_id ||
                 existing.ods_id !== updateRequest.ods_id ||
                 existing.enfoque_poblacional_id !== updateRequest.enfoque_poblacional_id ||
-                existing.codigo !== updateRequest.codigo.trim() ||
+                // existing.codigo !== updateRequest.codigo.trim() ||
                 existing.linea_base !== updateRequest.linea_base.trim() ||
                 existing.instrumento_planeacion !== updateRequest.instrumento_planeacion.trim() ||
                 existing.nombre !== updateRequest.nombre.trim() ||
-                existing.valor !== updateRequest.valor.trim() ||
+                existing.meta_numerica !== updateRequest.meta_numerica.trim() ||
                 existing.orientacion !== updateRequest.orientacion.trim() ||
-                existing.sector !== updateRequest.sector.trim() ||
+                // existing.sector !== updateRequest.sector.trim() ||
                 existing.total_cuatrienio !== updateRequest.total_cuatrienio.trim();
 
             // Verificar cambios en meta_resultado_ids
             const hasMetaResultadoChanges = JSON.stringify(newMetaResultadoIds) !== JSON.stringify(currentMetaResultadoIdsSorted);
 
             if (!hasBasicChanges && !hasMetaResultadoChanges) {
-                                 // Obtener el meta_producto básico
-                 const { data: metaProductoBasic, error: basicError } = 
-                     await this.supabaseService.clientAdmin
-                         .from('meta_producto')
-                         .select('*')
-                         .eq('id', id)
-                         .single();
+                // Obtener el meta_producto básico
+                const { data: metaProductoBasic, error: basicError } =
+                    await this.supabaseService.clientAdmin
+                        .from('meta_producto')
+                        .select('*')
+                        .eq('id', id)
+                        .single();
 
-                 if (basicError) {
-                     throw new InternalServerErrorException(
-                         'Error al obtener meta_producto: ' + basicError.message,
-                     );
-                 }
+                if (basicError) {
+                    throw new InternalServerErrorException(
+                        'Error al obtener meta_producto: ' + basicError.message,
+                    );
+                }
 
-                 // Obtener solo los IDs de meta_resultados
-                 const { data: metaResultados, error: metaResultadosError } = 
-                     await this.supabaseService.clientAdmin
-                         .from('metas_resultado_producto')
-                         .select('meta_resultado_id')
-                         .eq('meta_producto_id', id);
+                // Obtener solo los IDs de meta_resultados
+                const { data: metaResultados, error: metaResultadosError } =
+                    await this.supabaseService.clientAdmin
+                        .from('metas_resultado_producto')
+                        .select('meta_resultado_id')
+                        .eq('meta_producto_id', id);
 
-                 if (metaResultadosError) {
-                     throw new InternalServerErrorException(
-                         'Error al obtener meta_resultados: ' + metaResultadosError.message,
-                     );
-                 }
+                if (metaResultadosError) {
+                    throw new InternalServerErrorException(
+                        'Error al obtener meta_resultados: ' + metaResultadosError.message,
+                    );
+                }
 
-                 const result = {
-                     ...metaProductoBasic,
-                     meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
-                 };
+                const result = {
+                    ...metaProductoBasic,
+                    meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
+                };
 
                 return {
                     status: false,
@@ -365,13 +365,13 @@ export class MetaProductoService {
                             area_id: updateRequest.area_id,
                             ods_id: updateRequest.ods_id,
                             enfoque_poblacional_id: updateRequest.enfoque_poblacional_id,
-                            codigo: updateRequest.codigo.trim(),
+                            // codigo: updateRequest.codigo.trim(),
                             linea_base: updateRequest.linea_base.trim(),
                             instrumento_planeacion: updateRequest.instrumento_planeacion.trim(),
                             nombre: updateRequest.nombre.trim(),
-                            valor: updateRequest.valor.trim(),
+                            meta_numerica: updateRequest.meta_numerica.trim(),
                             orientacion: updateRequest.orientacion.trim(),
-                            sector: updateRequest.sector.trim(),
+                            // sector: updateRequest.sector.trim(),
                             total_cuatrienio: updateRequest.total_cuatrienio.trim(),
                             updated_at: new Date().toISOString(),
                         })
@@ -391,44 +391,44 @@ export class MetaProductoService {
                 await this.updateMetaResultadoRelations(id, updateRequest.meta_resultado_ids);
             }
 
-        // Obtener el meta_producto actualizado
-        const { data: metaProductoUpdated, error: updatedError } = 
-          await this.supabaseService.clientAdmin
-            .from('meta_producto')
-            .select('*')
-            .eq('id', id)
-            .single();
+            // Obtener el meta_producto actualizado
+            const { data: metaProductoUpdated, error: updatedError } =
+                await this.supabaseService.clientAdmin
+                    .from('meta_producto')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
 
-        if (updatedError) {
-          throw new InternalServerErrorException(
-            'Error al obtener meta producto actualizado: ' + updatedError.message,
-          );
-        }
+            if (updatedError) {
+                throw new InternalServerErrorException(
+                    'Error al obtener meta producto actualizado: ' + updatedError.message,
+                );
+            }
 
-        // Obtener solo los IDs de meta_resultados relacionados
-        const { data: metaResultados, error: metaResultadosError } = 
-          await this.supabaseService.clientAdmin
-            .from('metas_resultado_producto')
-            .select('meta_resultado_id')
-            .eq('meta_producto_id', id);
+            // Obtener solo los IDs de meta_resultados relacionados
+            const { data: metaResultados, error: metaResultadosError } =
+                await this.supabaseService.clientAdmin
+                    .from('metas_resultado_producto')
+                    .select('meta_resultado_id')
+                    .eq('meta_producto_id', id);
 
-        if (metaResultadosError) {
-          throw new InternalServerErrorException(
-            'Error al obtener meta resultados relacionados: ' + metaResultadosError.message,
-          );
-        }
+            if (metaResultadosError) {
+                throw new InternalServerErrorException(
+                    'Error al obtener meta resultados relacionados: ' + metaResultadosError.message,
+                );
+            }
 
-        // Agregar solo los IDs de meta_resultados al resultado
-        const result = {
-          ...metaProductoUpdated,
-          meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
-        };
+            // Agregar solo los IDs de meta_resultados al resultado
+            const result = {
+                ...metaProductoUpdated,
+                meta_resultado_ids: metaResultados?.map(mr => mr.meta_resultado_id) || []
+            };
 
-      return {
-        status: true,
-        message: 'Meta producto actualizado correctamente',
-        data: [result],
-      };
+            return {
+                status: true,
+                message: 'Meta producto actualizado correctamente',
+                data: [result],
+            };
         } catch (error) {
             if (error instanceof BadRequestException) {
                 throw error;
@@ -465,23 +465,45 @@ export class MetaProductoService {
                 };
             }
 
-            // Verificar si está siendo usado en financiacion_periodo
-            const { data: financiacionPeriodo, error: financiacionError } = await this.supabaseService.clientAdmin
-                .from('financiacion_periodo')
+            // Verificar si está siendo usado en programacion_financiera
+            const { data: programacionFinanciera, error: programacionError } = await this.supabaseService.clientAdmin
+                .from('programacion_financiera')
                 .select('id')
                 .eq('meta_id', id)
                 .limit(1);
 
-            if (financiacionError) {
+            if (programacionError) {
                 throw new InternalServerErrorException(
-                    'Error al verificar uso del meta producto en financiación por periodo'
+                    'Error al verificar uso del meta producto en programación financiera'
                 );
             }
 
-            if (financiacionPeriodo.length > 0) {
+            if (programacionFinanciera.length > 0) {
                 return {
                     status: false,
-                    message: 'No se puede eliminar el meta producto porque está siendo usado en financiación por periodo',
+                    message: 'No se puede eliminar el meta producto porque está siendo usado en programación financiera',
+                    error: 'Meta producto en uso',
+                    data: [],
+                };
+            }
+
+            // Verificar si está siendo usado en programacion_fisica
+            const { data: programacionFisica, error: fisicaError } = await this.supabaseService.clientAdmin
+                .from('programacion_fisica')
+                .select('id')
+                .eq('meta_id', id)
+                .limit(1);
+
+            if (fisicaError) {
+                throw new InternalServerErrorException(
+                    'Error al verificar uso del meta producto en programación física'
+                );
+            }
+
+            if (programacionFisica.length > 0) {
+                return {
+                    status: false,
+                    message: 'No se puede eliminar el meta producto porque está siendo usado en programación física',
                     error: 'Meta producto en uso',
                     data: [],
                 };
@@ -648,4 +670,4 @@ export class MetaProductoService {
         // Crear nuevas relaciones
         await this.createMetaResultadoRelations(metaProductoId, metaResultadoIds);
     }
-} 
+}

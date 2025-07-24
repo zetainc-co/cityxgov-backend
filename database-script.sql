@@ -192,7 +192,7 @@ CREATE TABLE meta_producto (
     linea_base VARCHAR,
     instrumento_planeacion VARCHAR,
     nombre VARCHAR NOT NULL,
-    valor VARCHAR,
+    meta_numerica VARCHAR,
     orientacion VARCHAR,
     sector VARCHAR,
     total_cuatrienio VARCHAR,
@@ -228,19 +228,32 @@ CREATE TABLE usuario_area (
         FOREIGN KEY (rol_id) REFERENCES rol(id)
 );
 
--- Tabla: financiacion_periodo
-CREATE TABLE financiacion_periodo (
+CREATE TABLE programacion_financiera (
     id SERIAL PRIMARY KEY,
     fuente_id INTEGER NOT NULL,
     meta_id INTEGER NOT NULL,
     periodo VARCHAR,
-    fuente_financiacion VARCHAR,
     valor NUMERIC(15,2),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT fk_financiacion_periodo_fuente
+    CONSTRAINT fk_programacion_financiera_fuente
         FOREIGN KEY (fuente_id) REFERENCES fuentes_financiacion(id),
-    CONSTRAINT fk_financiacion_periodo_meta
+    CONSTRAINT fk_programacion_financiera_meta
+        FOREIGN KEY (meta_id) REFERENCES meta_producto(id)
+);
+
+-- Tabla: financiacion_periodo
+CREATE TABLE programacion_fisica (
+    id SERIAL PRIMARY KEY,
+    fuente_id INTEGER NOT NULL,
+    meta_id INTEGER NOT NULL,
+    periodo VARCHAR,
+    descripcion TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT fk_programacion_fisica_fuente
+        FOREIGN KEY (fuente_id) REFERENCES fuentes_financiacion(id),
+    CONSTRAINT fk_programacion_fisica_meta
         FOREIGN KEY (meta_id) REFERENCES meta_producto(id)
 );
 
@@ -339,3 +352,47 @@ CREATE TRIGGER update_metas_resultado_producto_updated_at
 -- ================================================================
 -- FIN DEL SCRIPT
 -- ================================================================
+
+-- Función RPC para buscar códigos MGA por prefijo
+CREATE OR REPLACE FUNCTION search_mga_codes(
+    search_term TEXT,
+    max_results INTEGER DEFAULT 50
+)
+RETURNS TABLE(
+    id INTEGER,
+    codigo_indicador INTEGER,
+    producto TEXT,
+    programa TEXT,
+    sector TEXT,
+    descripcion_producto TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER -- Permite que la función se ejecute con permisos de admin
+AS $$
+BEGIN
+    -- Validar que search_term no esté vacío
+    IF search_term IS NULL OR trim(search_term) = '' THEN
+        RETURN;
+    END IF;
+
+    -- Validar que search_term solo contenga números
+    IF search_term !~ '^\d+$' THEN
+        RAISE EXCEPTION 'El término de búsqueda debe contener solo números';
+    END IF;
+
+    -- Retornar los resultados que empiecen con el término de búsqueda
+    RETURN QUERY
+    SELECT
+        c.id::INTEGER,
+        c.codigo_indicador::INTEGER,
+        c.producto::TEXT,
+        c.programa::TEXT,
+        c.sector::TEXT,
+        c.descripcion_producto::TEXT
+    FROM caracterizacion_mga c
+    WHERE c.codigo_indicador::TEXT ILIKE search_term || '%'
+    ORDER BY c.codigo_indicador ASC
+    LIMIT max_results;
+END;
+$$;
+

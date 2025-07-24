@@ -1,44 +1,44 @@
 export interface CreateMgaDto {
-    sector_codigo: number;
-    sector_nombre: string;
-    programa_codigo: number;
-    programa_nombre: string;
-    producto_codigo: number;
-    producto_nombre: string;
-    indicador_codigo: number;
-    indicador_nombre: string;
-    unidad_medida: string;
-    subprograma_codigo: number;
-    subprograma_nombre: string;
+    sector?: string | null;
+    programa?: string | null;
+    producto?: string | null;
+    descripcion_producto?: string | null;
+    unidad_medida_producto?: string | null;
+    producto_activo?: string | null;
+    codigo_indicador?: number | null;
+    indicador_producto?: string | null;
+    unidad_medida_indicador?: string | null;
+    principal?: string | null;
+    indicador_producto_activo?: string | null;
 }
 
 export interface UpdateMgaDto {
-    sector_codigo?: number;
-    sector_nombre?: string;
-    programa_codigo?: number;
-    programa_nombre?: string;
-    producto_codigo?: number;
-    producto_nombre?: string;
-    indicador_codigo?: number;
-    indicador_nombre?: string;
-    unidad_medida?: string;
-    subprograma_codigo?: number;
-    subprograma_nombre?: string;
+    sector?: string | null;
+    programa?: string | null;
+    producto?: string | null;
+    descripcion_producto?: string | null;
+    unidad_medida_producto?: string | null;
+    producto_activo?: string | null;
+    codigo_indicador?: number | null;
+    indicador_producto?: string | null;
+    unidad_medida_indicador?: string | null;
+    principal?: string | null;
+    indicador_producto_activo?: string | null;
 }
 
 export interface Mga {
     id: number;
-    sector_codigo: number;
-    sector_nombre: string;
-    programa_codigo: number;
-    programa_nombre: string;
-    producto_codigo: number;
-    producto_nombre: string;
-    indicador_codigo: number;
-    indicador_nombre: string;
-    unidad_medida: string;
-    subprograma_codigo: number;
-    subprograma_nombre: string;
+    sector?: string | null;
+    programa?: string | null;
+    producto?: string | null;
+    descripcion_producto?: string | null;
+    unidad_medida_producto?: string | null;
+    producto_activo?: string | null;
+    codigo_indicador?: number | null;
+    indicador_producto?: string | null;
+    unidad_medida_indicador?: string | null;
+    principal?: string | null;
+    indicador_producto_activo?: string | null;
     created_at: Date;
     updated_at: Date;
 }

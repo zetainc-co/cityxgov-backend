@@ -16,8 +16,9 @@ import { MetaResultadoModule } from './modules/meta_resultado/meta_resultado.mod
 import { LineaEstrategicaModule } from './modules/linea_estrategica/linea_estrategica.module';
 import { EntidadTerritorialModule } from './modules/entidad_territorial/entidad_territorial.module';
 import { EnfoquePoblacionalModule } from './modules/enfoque_poblacional/enfoque_poblacional.module';
+import { ProgramacionFisicaModule } from './modules/programacion_fisica/programacion_fisica.module';
 import { FuentesFinanciacionModule } from './modules/fuentes_financiacion/fuentes_financiacion.module';
-import { FinanciacionPeriodoModule } from './modules/financiacion_periodo/financiacion_periodo.module';
+import { ProgramacionFinancieraModule } from './modules/programacion_financiera/programacion_financiera.module';
 
 @Module({
   imports: [
@@ -37,9 +38,10 @@ import { FinanciacionPeriodoModule } from './modules/financiacion_periodo/financ
     MetaResultadoModule,
     LineaEstrategicaModule,
     EnfoquePoblacionalModule,
+    ProgramacionFisicaModule,
     EntidadTerritorialModule,
     FuentesFinanciacionModule,
-    FinanciacionPeriodoModule,
+    ProgramacionFinancieraModule,
   ],
   controllers: [AppController],
   providers: [AppService],

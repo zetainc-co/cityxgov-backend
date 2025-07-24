@@ -9,7 +9,8 @@ import {
     UseInterceptors,
     UploadedFile,
     ParseIntPipe,
-    UseGuards
+    UseGuards,
+    Query
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MgaService } from './mga.service';
@@ -26,7 +27,12 @@ export class MgaController {
 
     @Post('upload-excel')
     @Roles('admin', 'superadmin')
-    @UseInterceptors(FileInterceptor('file'))
+    @UseInterceptors(FileInterceptor('file', {
+        limits: {
+            fileSize: 50 * 1024 * 1024, // 50MB límite de archivo
+            files: 1
+        }
+    }))
     async uploadExcel(@UploadedFile() file: Express.Multer.File) {
         return await this.mgaService.uploadExcel(file);
     }
@@ -34,12 +40,36 @@ export class MgaController {
     @Get()
     @Roles('admin', 'superadmin')
     async findAll() {
-        return await this.mgaService.findAll();
+        const result = await this.mgaService.findAllWithoutPagination();
+        return result;
+    }
+
+    @Get('paginated')
+    @Roles('admin', 'superadmin', 'user')
+    async findAllPaginated(
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10'
+    ) {
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const result = await this.mgaService.findAll(pageNum, limitNum);
+        return result;
+    }
+
+    @Get('search')
+    @Roles('admin', 'superadmin')
+    async searchMga(
+        @Query('q') searchTerm: string = '',
+        @Query('limit') limit: string = '50'
+    ) {
+        const limitNum = parseInt(limit) || 50;
+        const result = await this.mgaService.searchMga(searchTerm, limitNum);
+        return result;
     }
 
     @Get(':id')
     @Roles('admin', 'superadmin')
-    async findOne(@Param('id') id: number) {
+    async findOne(@Param('id', ParseIntPipe) id: number) {
         return await this.mgaService.findOne(id);
     }
 

@@ -7,7 +7,7 @@ import {
 import * as XLSX from 'xlsx';
 import { CreateMgaDto, UpdateMgaDto } from './dto/mga.dto';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
-import { Express } from 'express';
+import { remove as removeDiacritics } from 'diacritics';
 
 @Injectable()
 export class MgaService {
@@ -61,23 +61,69 @@ export class MgaService {
                 );
             }
 
-            // Convertir usando los encabezados de la primera fila
+            // Mapeo de headers del Excel a los campos de la base de datos
+            const headerMap = {
+                "Sector (MGA)": "sector",
+                "Programa (MGA)": "programa",
+                "Producto (MGA)": "producto",
+                "Descripción del producto": "descripcion_producto",
+                "Unidad de medida del producto": "unidad_medida_producto",
+                "Producto activo": "producto_activo",
+                "Código indicador (MGA)": "codigo_indicador",
+                "Indicador de producto (MGA)": "indicador_producto",
+                "Unidad de medida del indicador de producto": "unidad_medida_indicador",
+                "Principal": "principal",
+                "Indicador de producto activo": "indicador_producto_activo"
+            };
+
+            const expectedHeaders = Object.keys(headerMap);
+            const normalize = (str: string) => removeDiacritics(str || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            const normalizedExpected = expectedHeaders.map(normalize);
+
             const headers = jsonData[0] as string[];
+            const normalizedHeaders = headers.map(normalize);
+
+            // Validar headers (sin importar orden, tildes, espacios)
+            const missingHeaders = normalizedExpected.filter(h => !normalizedHeaders.includes(h));
+            const extraHeaders = normalizedHeaders.filter(h => !normalizedExpected.includes(h));
+            if (missingHeaders.length > 0 || extraHeaders.length > 0) {
+                throw new BadRequestException(
+                    `El archivo Excel no cumple con la estructura de Catálogo MGA.\n` +
+                    (missingHeaders.length > 0 ? `Faltan: ${missingHeaders.join(', ')}. ` : '') +
+                    (extraHeaders.length > 0 ? `Sobrantes: ${extraHeaders.join(', ')}.` : '')
+                );
+            }
+
+            // Reordenar los headers para el mapeo correcto
+            const headerIndexMap: Record<string, number> = {};
+            normalizedHeaders.forEach((h, idx) => {
+                const expectedIdx = normalizedExpected.indexOf(h);
+                if (expectedIdx !== -1) {
+                    headerIndexMap[expectedHeaders[expectedIdx]] = idx;
+                }
+            });
+
             const dataRows = jsonData.slice(1) as any[][];
 
             const formattedData = dataRows.map((row) => {
                 const obj: any = {};
-                headers.forEach((header, index) => {
-                    obj[header] = row[index] || '';
+                expectedHeaders.forEach((header) => {
+                    const dbField = headerMap[header];
+                    const idx = headerIndexMap[header];
+                    let value = row[idx];
+                    if (value === undefined || value === null || String(value).trim() === '') {
+                        obj[dbField] = null;
+                    } else if (dbField === 'codigo_indicador') {
+                        obj[dbField] = Number(value) || null;
+                    } else {
+                        obj[dbField] = String(value).trim();
+                    }
                 });
                 return obj;
             });
 
             // Validar y transformar los datos
             const mgaRecords = this.validateAndTransformData(formattedData);
-
-            // Verificar duplicados antes de insertar
-            await this.checkForDuplicates(mgaRecords);
 
             // Insertar en la base de datos usando transacción
             const result = await this.createMgaRecords(mgaRecords);
@@ -100,97 +146,44 @@ export class MgaService {
 
     // Validar y transformar datos
     private validateAndTransformData(data: any[]): CreateMgaDto[] {
-        const requiredFields = [
-            'sector_codigo',
-            'sector_nombre',
-            'programa_codigo',
-            'programa_nombre',
-            'producto_codigo',
-            'producto_nombre',
-            'indicador_codigo',
-            'indicador_nombre',
-            'unidad_medida',
-            'subprograma_codigo',
-            'subprograma_nombre',
+        const allowedFields = [
+            'sector',
+            'programa',
+            'producto',
+            'descripcion_producto',
+            'unidad_medida_producto',
+            'producto_activo',
+            'codigo_indicador',
+            'indicador_producto',
+            'unidad_medida_indicador',
+            'principal',
+            'indicador_producto_activo',
         ];
 
         const errors: string[] = [];
 
-        const validatedData = data
-            .map((row, index) => {
-                const rowNumber = index + 2; // +2 porque índice 0 es fila 1, pero hay encabezados
+        const validatedData = data.map((row, index) => {
+            const rowNumber = index + 2; // +2 porque índice 0 es fila 1, pero hay encabezados
+            const record: CreateMgaDto = {};
 
-                // Verificar que todos los campos requeridos estén presentes y no vacíos
-                const missingFields = requiredFields.filter((field) => {
-                    const value = row[field];
-                    return (
-                        value === undefined || value === null || String(value).trim() === ''
-                    );
-                });
-
-                if (missingFields.length > 0) {
-                    errors.push(
-                        `Fila ${rowNumber}: Faltan o están vacíos los siguientes campos: ${missingFields.join(', ')}`,
-                    );
-                    return null;
+            allowedFields.forEach((field) => {
+                let value = row[field];
+                if (value === undefined || value === null || String(value).trim() === '') {
+                    record[field] = null;
+                } else if (field === 'codigo_indicador') {
+                    const num = Number(value);
+                    if (isNaN(num)) {
+                        record[field] = null; // Si no es número, guardar como null
+                    } else {
+                        record[field] = num;
+                    }
+                } else {
+                    // Campos de texto sin restricción de longitud
+                    record[field] = String(value).trim();
                 }
-
-                // Validar tipos de datos numéricos
-                const numericFields = [
-                    'sector_codigo',
-                    'programa_codigo',
-                    'producto_codigo',
-                    'indicador_codigo',
-                    'subprograma_codigo',
-                ];
-                const invalidNumericFields = numericFields.filter((field) => {
-                    const value = row[field];
-                    return isNaN(Number(value)) || !Number.isInteger(Number(value));
-                });
-
-                if (invalidNumericFields.length > 0) {
-                    errors.push(
-                        `Fila ${rowNumber}: Los siguientes campos deben ser números enteros: ${invalidNumericFields.join(', ')}`,
-                    );
-                    return null;
-                }
-
-                // Validar longitud de strings
-                const stringFields = [
-                    'sector_nombre',
-                    'programa_nombre',
-                    'producto_nombre',
-                    'indicador_nombre',
-                    'unidad_medida',
-                    'subprograma_nombre',
-                ];
-                const tooLongFields = stringFields.filter((field) => {
-                    const value = String(row[field]).trim();
-                    return value.length > 255; // Asumiendo límite de 255 caracteres
-                });
-
-                if (tooLongFields.length > 0) {
-                    errors.push(
-                        `Fila ${rowNumber}: Los siguientes campos exceden la longitud máxima (255 caracteres): ${tooLongFields.join(', ')}`,
-                    );
-                    return null;
-                }
-
-                return {
-                    sector_codigo: Number(row.sector_codigo),
-                    sector_nombre: String(row.sector_nombre).trim(),
-                    programa_codigo: Number(row.programa_codigo),
-                    programa_nombre: String(row.programa_nombre).trim(),
-                    producto_codigo: Number(row.producto_codigo),
-                    producto_nombre: String(row.producto_nombre).trim(),
-                    indicador_codigo: Number(row.indicador_codigo),
-                    indicador_nombre: String(row.indicador_nombre).trim(),
-                    unidad_medida: String(row.unidad_medida).trim(),
-                    subprograma_codigo: Number(row.subprograma_codigo),
-                    subprograma_nombre: String(row.subprograma_nombre).trim(),
-                };
-            })
-            .filter((record) => record !== null);
+            });
+            return record;
+        });
 
         if (errors.length > 0) {
             throw new BadRequestException(
@@ -201,73 +194,40 @@ export class MgaService {
         return validatedData;
     }
 
-    // Verificar duplicados
-    private async checkForDuplicates(mgaRecords: CreateMgaDto[]): Promise<void> {
-        // Verificar duplicados dentro del mismo archivo
-        const seen = new Set<string>();
-        const duplicates: string[] = [];
-
-        mgaRecords.forEach((record, index) => {
-            const key = `${record.sector_codigo}-${record.programa_codigo}-${record.producto_codigo}-${record.indicador_codigo}`;
-            if (seen.has(key)) {
-                duplicates.push(
-                    `Fila ${index + 2}: Registro duplicado con sector_codigo: ${record.sector_codigo}, programa_codigo: ${record.programa_codigo}, producto_codigo: ${record.producto_codigo}, indicador_codigo: ${record.indicador_codigo}`,
-                );
-            }
-            seen.add(key);
-        });
-
-        if (duplicates.length > 0) {
-            throw new BadRequestException(
-                `Duplicados encontrados en el archivo:\n${duplicates.join('\n')}`,
-            );
-        }
-    }
 
     // Validar datos de actualización
     private validateUpdateData(updateData: UpdateMgaDto): UpdateMgaDto {
         const errors: string[] = [];
         const validatedData: UpdateMgaDto = {};
 
-        // Validar campos numéricos si están presentes
-        const numericFields = [
-            'sector_codigo',
-            'programa_codigo',
-            'producto_codigo',
-            'indicador_codigo',
-            'subprograma_codigo',
+        const allowedFields = [
+            'sector',
+            'programa',
+            'producto',
+            'descripcion_producto',
+            'unidad_medida_producto',
+            'producto_activo',
+            'codigo_indicador',
+            'indicador_producto',
+            'unidad_medida_indicador',
+            'principal',
+            'indicador_producto_activo',
         ];
 
-        numericFields.forEach((field) => {
+        allowedFields.forEach((field) => {
             if (updateData[field] !== undefined) {
-                const value = updateData[field];
-                if (isNaN(Number(value)) || !Number.isInteger(Number(value))) {
-                    errors.push(`${field} debe ser un número entero`);
+                let value = updateData[field];
+                if (value === null || value === undefined || String(value).trim() === '') {
+                    validatedData[field] = null;
+                } else if (field === 'codigo_indicador') {
+                    const num = Number(value);
+                    if (isNaN(num)) {
+                        validatedData[field] = null; // Si no es número, guardar como null
+                    } else {
+                        validatedData[field] = num;
+                    }
                 } else {
-                    validatedData[field] = Number(value);
-                }
-            }
-        });
-
-        // Validar campos de texto si están presentes
-        const stringFields = [
-            'sector_nombre',
-            'programa_nombre',
-            'producto_nombre',
-            'indicador_nombre',
-            'unidad_medida',
-            'subprograma_nombre',
-        ];
-
-        stringFields.forEach((field) => {
-            if (updateData[field] !== undefined) {
-                const value = String(updateData[field]).trim();
-                if (value.length === 0) {
-                    errors.push(`${field} no puede estar vacío`);
-                } else if (value.length > 255) {
-                    errors.push(`${field} excede la longitud máxima (255 caracteres)`);
-                } else {
-                    validatedData[field] = value;
+                    validatedData[field] = String(value).trim();
                 }
             }
         });
@@ -281,22 +241,36 @@ export class MgaService {
         return validatedData;
     }
 
-    // Insertar datos en la base de datos
+    // Insertar datos en la base de datos en lotes
     private async createMgaRecords(mgaRecords: CreateMgaDto[]): Promise<any[]> {
         try {
-            const { data, error } = await this.supabaseService.clientAdmin
-                .from('caracterizacion_mga')
-                .insert(mgaRecords)
-                .select();
+            const batchSize = 500; // Inserción de 500 registros por lote
+            const allInsertedData: any[] = [];
 
-            if (error) {
-                console.error('Error de Supabase:', error);
-                throw new BadRequestException(
-                    `Error insertando datos en la base de datos: ${error.message}`,
-                );
+
+            // Dividir en lotes y procesar cada uno
+            for (let i = 0; i < mgaRecords.length; i += batchSize) {
+                const batch = mgaRecords.slice(i, i + batchSize);
+                const batchNumber = Math.floor(i / batchSize) + 1;
+                const totalBatches = Math.ceil(mgaRecords.length / batchSize);
+
+                const { data, error } = await this.supabaseService.clientAdmin
+                    .from('caracterizacion_mga')
+                    .insert(batch)
+                    .select();
+
+                if (error) {
+                    throw new BadRequestException(
+                        `Error insertando lote ${batchNumber}: ${error.message}`,
+                    );
+                }
+
+                if (data) {
+                    allInsertedData.push(...data);
+                }
             }
 
-            return data || [];
+            return allInsertedData;
         } catch (error) {
             if (error instanceof BadRequestException) {
                 throw error;
@@ -307,18 +281,107 @@ export class MgaService {
         }
     }
 
-    // Obtener todos los registros
-    async findAll(): Promise<any[]> {
+    // Método findAll con paginación
+    async findAll(page?: number, limit?: number): Promise<any> {
         try {
-            const { data, error } = await this.supabaseService.clientAdmin
+            let query = this.supabaseService.clientAdmin
                 .from('caracterizacion_mga')
-                .select('*')
+                .select('*', { count: 'exact' })
                 .order('created_at', { ascending: false });
 
+            // Si se especifica paginación
+            if (page && limit) {
+                const start = (page - 1) * limit;
+                const end = start + limit - 1;
+                query = query.range(start, end);
+            }
+
+            const { data, error, count } = await query;
+
             if (error) {
-                console.error('Error obteniendo datos:', error);
                 throw new BadRequestException(
                     `Error obteniendo datos: ${error.message}`,
+                );
+            }
+
+            const recordCount = data ? data.length : 0;
+
+            return {
+                data: data || [],
+                total: count || 0,
+                page: page || 1,
+                limit: limit || recordCount,
+                totalPages: limit ? Math.ceil((count || 0) / limit) : 1
+            };
+        } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new BadRequestException(
+                `Error inesperado obteniendo datos: ${error.message}`,
+            );
+        }
+    }
+
+    // Método para obtener TODOS los registros (para casos específicos)
+    async findAllWithoutPagination(): Promise<any[]> {
+        try {
+            const allRecords: any[] = [];
+            let from = 0;
+            const batchSize = 500; // Inserción de 500 registros por lote
+            let hasMore = true;
+
+            while (hasMore) {
+                const { data, error } = await this.supabaseService.clientAdmin
+                    .from('caracterizacion_mga')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .range(from, from + batchSize - 1);
+
+                if (error) {
+                    throw new BadRequestException(`Error obteniendo datos: ${error.message}`);
+                }
+
+                if (data && data.length > 0) {
+                    allRecords.push(...data);
+                    from += batchSize;
+                    hasMore = data.length === batchSize;
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            return allRecords;
+        } catch (error) {
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new BadRequestException(
+                `Error inesperado obteniendo todos los datos: ${error.message}`,
+            );
+        }
+    }
+
+    // Método para buscar códigos MGA con sugerencias
+    async searchMga(searchTerm: string, limit: number = 50): Promise<any[]> {
+        try {
+            // Si no hay término de búsqueda, retornar array vacío
+            if (!searchTerm || !searchTerm.trim()) {
+                return [];
+            }
+
+            const term = searchTerm.trim();
+
+            // Usar la función RPC personalizada de Supabase
+            const { data, error } = await this.supabaseService.clientAdmin
+                .rpc('search_mga_codes', {
+                    search_term: term,
+                    max_results: limit
+                });
+
+            if (error) {
+                throw new BadRequestException(
+                    `Error en búsqueda: ${error.message}`,
                 );
             }
 
@@ -328,7 +391,7 @@ export class MgaService {
                 throw error;
             }
             throw new BadRequestException(
-                `Error inesperado obteniendo datos: ${error.message}`,
+                `Error inesperado en búsqueda: ${error.message}`,
             );
         }
     }
@@ -348,7 +411,6 @@ export class MgaService {
                         `No se encontró el registro MGA con ID: ${id}`,
                     );
                 }
-                console.error('Error obteniendo registro:', error);
                 throw new BadRequestException(
                     `Error obteniendo registro: ${error.message}`,
                 );

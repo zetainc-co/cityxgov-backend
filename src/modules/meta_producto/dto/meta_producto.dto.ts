@@ -4,13 +4,13 @@ export interface MetaProducto {
     area_id: number;
     ods_id: number;
     enfoque_poblacional_id: number;
-    codigo: string;
+    // codigo: string;
     linea_base: string;
     instrumento_planeacion: string;
     nombre: string;
-    valor: string;
+    meta_numerica: string;
     orientacion: string;
-    sector: string;
+    // sector: string;
     total_cuatrienio: string;
     created_at: string;
     updated_at: string;
@@ -21,13 +21,13 @@ export interface MetaProductoRequest {
     area_id: number;
     ods_id: number;
     enfoque_poblacional_id: number;
-    codigo: string;
+    // codigo: string;
     linea_base: string;
     instrumento_planeacion: string;
     nombre: string;
-    valor: string;
+    meta_numerica: string;
     orientacion: string;
-    sector: string;
+    // sector: string;
     total_cuatrienio: string;
     meta_resultado_ids: number[]; // Para la relación muchos a muchos
 }
@@ -55,4 +55,4 @@ export interface MetaProductoWithRelations extends MetaProducto {
     ods?: any; // Datos de ODS
     enfoque_poblacional?: any; // Datos de enfoque poblacional
     meta_resultados?: any[]; // Array de meta_resultados relacionados
-} 
+}

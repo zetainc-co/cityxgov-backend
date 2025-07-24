@@ -9,7 +9,7 @@ import { MetaProductoRequest } from '../dto/meta_producto.dto';
 @Injectable()
 export class CreateMetaProductoPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): MetaProductoRequest {
-    
+
     if (!value) {
       throw new BadRequestException({
         status: false,
@@ -32,23 +32,23 @@ export class CreateMetaProductoPipe implements PipeTransform {
       area_id,
       ods_id,
       enfoque_poblacional_id,
-      codigo,
+      // codigo,
       linea_base,
       instrumento_planeacion,
       nombre,
-      valor,
+      meta_numerica,
       orientacion,
-      sector,
+      // sector,
       total_cuatrienio,
       meta_resultado_ids
     } = value;
 
     // Validar campos requeridos
     this.validateRequiredFields(value);
-    
+
     // Validar tipos y formatos
     this.validateFieldTypes(value);
-    
+
     // Validar arrays
     this.validateArrayFields(value);
 
@@ -57,13 +57,13 @@ export class CreateMetaProductoPipe implements PipeTransform {
       area_id: Number(area_id),
       ods_id: Number(ods_id),
       enfoque_poblacional_id: Number(enfoque_poblacional_id),
-      codigo: codigo.trim(),
+      // codigo: codigo.trim(),
       linea_base: linea_base.trim(),
       instrumento_planeacion: instrumento_planeacion.trim(),
       nombre: nombre.trim(),
-      valor: valor.trim(),
+      meta_numerica: meta_numerica.trim(),
       orientacion: orientacion.trim(),
-      sector: sector.trim(),
+      // sector: sector.trim(),
       total_cuatrienio: total_cuatrienio.trim(),
       meta_resultado_ids: meta_resultado_ids
     };
@@ -72,24 +72,24 @@ export class CreateMetaProductoPipe implements PipeTransform {
   private validateRequiredFields(value: any) {
     const requiredFields = [
       'caracterizacion_mga_id',
-      'area_id', 
+      'area_id',
       'ods_id',
       'enfoque_poblacional_id',
-      'codigo',
+      // 'codigo',
       'linea_base',
       'instrumento_planeacion',
       'nombre',
-      'valor',
+      'meta_numerica',
       'orientacion',
-      'sector',
+      // 'sector',
       'total_cuatrienio',
       'meta_resultado_ids'
     ];
 
     const missingFields = requiredFields.filter(field => {
       const fieldValue = value[field];
-      return fieldValue === undefined || fieldValue === null || 
-             (typeof fieldValue === 'string' && fieldValue.trim() === '');
+      return fieldValue === undefined || fieldValue === null ||
+        (typeof fieldValue === 'string' && fieldValue.trim() === '');
     });
 
     if (missingFields.length > 0) {
@@ -104,7 +104,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
   private validateFieldTypes(value: any) {
     // Validar IDs numéricos
     const numericFields = ['caracterizacion_mga_id', 'area_id', 'ods_id', 'enfoque_poblacional_id'];
-    
+
     numericFields.forEach(field => {
       const numValue = Number(value[field]);
       if (isNaN(numValue) || !Number.isInteger(numValue) || numValue <= 0) {
@@ -117,8 +117,8 @@ export class CreateMetaProductoPipe implements PipeTransform {
     });
 
     // Validar campos de texto
-    const stringFields = ['codigo', 'linea_base', 'instrumento_planeacion', 'nombre', 'valor', 'orientacion', 'sector', 'total_cuatrienio'];
-    
+    const stringFields = ['linea_base', 'instrumento_planeacion', 'nombre', 'meta_numerica', 'orientacion', 'total_cuatrienio'];
+
     stringFields.forEach(field => {
       if (typeof value[field] !== 'string') {
         throw new BadRequestException({
@@ -144,23 +144,6 @@ export class CreateMetaProductoPipe implements PipeTransform {
         });
       }
     });
-
-    // Validaciones específicas
-    if (value.codigo && value.codigo.trim().length < 3) {
-      throw new BadRequestException({
-        status: false,
-        message: 'El código debe tener al menos 3 caracteres',
-        data: [],
-      });
-    }
-
-    if (value.nombre && value.nombre.trim().length < 5) {
-      throw new BadRequestException({
-        status: false,
-        message: 'El nombre debe tener al menos 5 caracteres',
-        data: [],
-      });
-    }
   }
 
   private validateArrayFields(value: any) {
@@ -193,23 +176,13 @@ export class CreateMetaProductoPipe implements PipeTransform {
         data: [],
       });
     }
-
-    // Validar que no haya duplicados
-    const uniqueIds = [...new Set(value.meta_resultado_ids)];
-    if (uniqueIds.length !== value.meta_resultado_ids.length) {
-      throw new BadRequestException({
-        status: false,
-        message: 'No se permiten IDs duplicados en meta_resultado_ids',
-        data: [],
-      });
-    }
   }
 }
 
 @Injectable()
 export class ValidateIdPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): number {
-    
+
     if (value === undefined || value === null || value === '') {
       throw new BadRequestException({
         status: false,
@@ -238,4 +211,4 @@ export class ValidateIdPipe implements PipeTransform {
 
     return numericValue;
   }
-} 
+}
