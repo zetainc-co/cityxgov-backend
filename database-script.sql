@@ -4,9 +4,9 @@
 -- Archivo: database_script.sql
 -- Base de datos: Supabase
 -- Fecha: 2025-01-21
--- Actualizado: 2025-06-30
+-- Actualizado: 2025-01-21
 -- Autor: Yedixon Ramones
--- Versión: 1.0.0
+-- Versión: 1.1.0 (Actualizado con nuevos campos y tabla entidad_territorial)
 -- ================================================================
 
 -- ================================================================
@@ -52,11 +52,16 @@ CREATE TABLE rol (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabla: area
+-- Tabla: area (ACTUALIZADA con nuevos campos)
 CREATE TABLE area (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
     descripcion TEXT,
+    telefono VARCHAR,
+    correo VARCHAR,
+    direccion VARCHAR,
+    responsable VARCHAR,
+    modulos JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -105,6 +110,29 @@ CREATE TABLE caracterizacion_mga (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabla: entidad_territorial (NUEVA TABLA)
+CREATE TABLE entidad_territorial (
+    id SERIAL PRIMARY KEY,
+    nombre_entidad VARCHAR NOT NULL,
+    nombre_representante VARCHAR,
+    nit VARCHAR,
+    nombre_municipio VARCHAR,
+    departamento VARCHAR,
+    region VARCHAR,
+    categoria_municipal VARCHAR,
+    poblacion INTEGER,
+    latitud NUMERIC(10,8),
+    longitud NUMERIC(11,8),
+    direccion_completa TEXT,
+    tipo_municipio VARCHAR,
+    imagenes TEXT,
+    mapa_municipio TEXT,
+    organigrama JSONB,
+    descripcion TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ================================================================
 -- 3. TABLAS PRINCIPALES
 -- ================================================================
@@ -136,12 +164,13 @@ CREATE TABLE programa (
         FOREIGN KEY (linea_estrategica_id) REFERENCES linea_estrategica(id)
 );
 
--- Tabla: meta_resultado
+-- Tabla: meta_resultado (ACTUALIZADA con campo descripcion)
 CREATE TABLE meta_resultado (
     id SERIAL PRIMARY KEY,
     linea_estrategica_id INTEGER NOT NULL,
     nombre VARCHAR NOT NULL,
     indicador VARCHAR,
+    descripcion TEXT,
     linea_base VARCHAR,
     año_linea_base INTEGER,
     meta_cuatrienio VARCHAR,
@@ -163,7 +192,7 @@ CREATE TABLE meta_producto (
     linea_base VARCHAR,
     instrumento_planeacion VARCHAR,
     nombre VARCHAR NOT NULL,
-    valor VARCHAR,
+    meta_numerica VARCHAR,
     orientacion VARCHAR,
     sector VARCHAR,
     total_cuatrienio VARCHAR,
@@ -199,19 +228,32 @@ CREATE TABLE usuario_area (
         FOREIGN KEY (rol_id) REFERENCES rol(id)
 );
 
--- Tabla: financiacion_periodo
-CREATE TABLE financiacion_periodo (
+CREATE TABLE programacion_financiera (
     id SERIAL PRIMARY KEY,
     fuente_id INTEGER NOT NULL,
     meta_id INTEGER NOT NULL,
     periodo VARCHAR,
-    fuente_financiacion VARCHAR,
     valor NUMERIC(15,2),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT fk_financiacion_periodo_fuente
+    CONSTRAINT fk_programacion_financiera_fuente
         FOREIGN KEY (fuente_id) REFERENCES fuentes_financiacion(id),
-    CONSTRAINT fk_financiacion_periodo_meta
+    CONSTRAINT fk_programacion_financiera_meta
+        FOREIGN KEY (meta_id) REFERENCES meta_producto(id)
+);
+
+-- Tabla: financiacion_periodo
+CREATE TABLE programacion_fisica (
+    id SERIAL PRIMARY KEY,
+    fuente_id INTEGER NOT NULL,
+    meta_id INTEGER NOT NULL,
+    periodo VARCHAR,
+    descripcion TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT fk_programacion_fisica_fuente
+        FOREIGN KEY (fuente_id) REFERENCES fuentes_financiacion(id),
+    CONSTRAINT fk_programacion_fisica_meta
         FOREIGN KEY (meta_id) REFERENCES meta_producto(id)
 );
 
@@ -267,6 +309,11 @@ CREATE TRIGGER update_caracterizacion_mga_updated_at
     BEFORE UPDATE ON caracterizacion_mga
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Trigger para entidad_territorial (NUEVO TRIGGER)
+CREATE TRIGGER update_entidad_territorial_updated_at
+    BEFORE UPDATE ON entidad_territorial
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Trigger para linea_estrategica
 CREATE TRIGGER update_linea_estrategica_updated_at
     BEFORE UPDATE ON linea_estrategica
@@ -305,3 +352,47 @@ CREATE TRIGGER update_metas_resultado_producto_updated_at
 -- ================================================================
 -- FIN DEL SCRIPT
 -- ================================================================
+
+-- Función RPC para buscar códigos MGA por prefijo
+CREATE OR REPLACE FUNCTION search_mga_codes(
+    search_term TEXT,
+    max_results INTEGER DEFAULT 50
+)
+RETURNS TABLE(
+    id INTEGER,
+    codigo_indicador INTEGER,
+    producto TEXT,
+    programa TEXT,
+    sector TEXT,
+    descripcion_producto TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER -- Permite que la función se ejecute con permisos de admin
+AS $$
+BEGIN
+    -- Validar que search_term no esté vacío
+    IF search_term IS NULL OR trim(search_term) = '' THEN
+        RETURN;
+    END IF;
+
+    -- Validar que search_term solo contenga números
+    IF search_term !~ '^\d+$' THEN
+        RAISE EXCEPTION 'El término de búsqueda debe contener solo números';
+    END IF;
+
+    -- Retornar los resultados que empiecen con el término de búsqueda
+    RETURN QUERY
+    SELECT
+        c.id::INTEGER,
+        c.codigo_indicador::INTEGER,
+        c.producto::TEXT,
+        c.programa::TEXT,
+        c.sector::TEXT,
+        c.descripcion_producto::TEXT
+    FROM caracterizacion_mga c
+    WHERE c.codigo_indicador::TEXT ILIKE search_term || '%'
+    ORDER BY c.codigo_indicador ASC
+    LIMIT max_results;
+END;
+$$;
+
