@@ -6,6 +6,6 @@ import { SupabaseModule } from 'src/config/supabase/supabase.module';
   imports: [SupabaseModule],
   controllers: [MgaController],
   providers: [MgaService],
-  exports: [MgaService]
+  exports: [MgaService],
 })
 export class MgaModule {}

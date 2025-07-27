@@ -8,12 +8,7 @@ import { PasswordValidationPipe } from './pipes/password.pipe';
 @Module({
   imports: [SupabaseModule],
   controllers: [UsuariosController],
-  providers: [
-    UsuariosService,
-    ValidateUsuarioPipe,
-    PasswordValidationPipe
-  ],
+  providers: [UsuariosService, ValidateUsuarioPipe, PasswordValidationPipe],
   exports: [UsuariosService],
 })
-
 export class UsuariosModule {}

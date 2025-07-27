@@ -20,17 +20,23 @@ export class ValidateProgramaPipe implements PipeTransform {
 
     // Campos requeridos
     if (!value.nombre || value.nombre.trim() === '') {
-        throw new BadRequestException('El nombre es requerido');
+      throw new BadRequestException('El nombre es requerido');
     }
 
     if (!value.linea_estrategica_id) {
-        throw new BadRequestException('La línea estratégica es requerida');
+      throw new BadRequestException('La línea estratégica es requerida');
     }
 
     // Validar que linea_estrategica_id sea un número positivo
     const lineaEstrategicaId = Number(value.linea_estrategica_id);
-    if (isNaN(lineaEstrategicaId) || !Number.isInteger(lineaEstrategicaId) || lineaEstrategicaId <= 0) {
-        throw new BadRequestException('El ID de línea estratégica debe ser un número entero positivo');
+    if (
+      isNaN(lineaEstrategicaId) ||
+      !Number.isInteger(lineaEstrategicaId) ||
+      lineaEstrategicaId <= 0
+    ) {
+      throw new BadRequestException(
+        'El ID de línea estratégica debe ser un número entero positivo',
+      );
     }
 
     return value;

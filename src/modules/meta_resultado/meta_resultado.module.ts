@@ -9,5 +9,4 @@ import { SupabaseService } from 'src/config/supabase/supabase.service';
   controllers: [MetaResultadoController],
   providers: [MetaResultadoService, SupabaseService],
 })
-
 export class MetaResultadoModule {}

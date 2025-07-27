@@ -4,9 +4,9 @@ import { EntidadTerritorialController } from './entidad_territorial.controller';
 import { SupabaseModule } from 'src/config/supabase/supabase.module';
 
 @Module({
-    imports: [SupabaseModule],
-    controllers: [EntidadTerritorialController],
-    providers: [EntidadTerritorialService],
-    exports: [EntidadTerritorialService]
+  imports: [SupabaseModule],
+  controllers: [EntidadTerritorialController],
+  providers: [EntidadTerritorialService],
+  exports: [EntidadTerritorialService],
 })
 export class EntidadTerritorialModule {}

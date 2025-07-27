@@ -23,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       identificacion: payload.id,
       roles: payload.roles,
-      area_modulos: payload.area_modulos || {}
+      area_modulos: payload.area_modulos || {},
     };
   }
 }

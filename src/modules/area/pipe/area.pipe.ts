@@ -26,20 +26,28 @@ export class ValidateAreaPipe implements PipeTransform<AreaRequest> {
 
     // Validaciones de longitud para nombre
     if (value.nombre.trim().length < 3) {
-      throw new BadRequestException('El nombre debe tener al menos 3 caracteres');
+      throw new BadRequestException(
+        'El nombre debe tener al menos 3 caracteres',
+      );
     }
 
     if (value.nombre.trim().length > 150) {
-      throw new BadRequestException('El nombre no puede tener más de 150 caracteres');
+      throw new BadRequestException(
+        'El nombre no puede tener más de 150 caracteres',
+      );
     }
 
     // Validaciones de longitud para teléfono
     if (value.telefono && value.telefono.trim().length > 0) {
       if (value.telefono.trim().length < 7) {
-        throw new BadRequestException('El teléfono debe tener al menos 7 caracteres');
+        throw new BadRequestException(
+          'El teléfono debe tener al menos 7 caracteres',
+        );
       }
       if (value.telefono.trim().length > 10) {
-        throw new BadRequestException('El teléfono no puede tener más de 10 caracteres');
+        throw new BadRequestException(
+          'El teléfono no puede tener más de 10 caracteres',
+        );
       }
       // Validar que solo contenga números
       if (!/^\d+$/.test(value.telefono.trim())) {
@@ -51,10 +59,14 @@ export class ValidateAreaPipe implements PipeTransform<AreaRequest> {
     if (value.correo && value.correo.trim().length > 0) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(value.correo.trim())) {
-        throw new BadRequestException('El correo electrónico no tiene un formato válido');
+        throw new BadRequestException(
+          'El correo electrónico no tiene un formato válido',
+        );
       }
       if (value.correo.trim().length > 150) {
-        throw new BadRequestException('El correo electrónico no puede tener más de 150 caracteres');
+        throw new BadRequestException(
+          'El correo electrónico no puede tener más de 150 caracteres',
+        );
       }
     }
 
@@ -64,35 +76,51 @@ export class ValidateAreaPipe implements PipeTransform<AreaRequest> {
     }
 
     if (value.responsable.trim().length < 3) {
-      throw new BadRequestException('El responsable debe tener al menos 3 caracteres');
+      throw new BadRequestException(
+        'El responsable debe tener al menos 3 caracteres',
+      );
     }
 
     if (value.responsable.trim().length > 150) {
-      throw new BadRequestException('El responsable no puede tener más de 150 caracteres');
+      throw new BadRequestException(
+        'El responsable no puede tener más de 150 caracteres',
+      );
     }
 
     // Validaciones de la dirección
     if (value.direccion && value.direccion.trim().length > 0) {
       if (value.direccion.trim().length < 5) {
-        throw new BadRequestException('La dirección debe tener al menos 5 caracteres');
+        throw new BadRequestException(
+          'La dirección debe tener al menos 5 caracteres',
+        );
       }
       if (value.direccion.trim().length > 150) {
-        throw new BadRequestException('La dirección no puede tener más de 150 caracteres');
+        throw new BadRequestException(
+          'La dirección no puede tener más de 150 caracteres',
+        );
       }
     }
 
     // La descripción es opcional pero si se proporciona debe tener longitud válida
     if (value.descripcion && value.descripcion.trim().length > 0) {
       if (value.descripcion.trim().length < 3) {
-        throw new BadRequestException('La descripción debe tener al menos 3 caracteres');
+        throw new BadRequestException(
+          'La descripción debe tener al menos 3 caracteres',
+        );
       }
       if (value.descripcion.trim().length > 400) {
-        throw new BadRequestException('La descripción no puede tener más de 400 caracteres');
+        throw new BadRequestException(
+          'La descripción no puede tener más de 400 caracteres',
+        );
       }
     }
 
     // Validación de módulos - Requiere al menos un módulo
-    if (!value.modulos || typeof value.modulos !== 'object' || Object.keys(value.modulos).length === 0) {
+    if (
+      !value.modulos ||
+      typeof value.modulos !== 'object' ||
+      Object.keys(value.modulos).length === 0
+    ) {
       throw new BadRequestException('Debe asignar al menos un módulo al área');
     }
 

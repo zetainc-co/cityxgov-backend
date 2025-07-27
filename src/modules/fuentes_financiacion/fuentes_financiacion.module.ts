@@ -7,6 +7,6 @@ import { FuentesFinanciacionController } from './fuentes_financiacion.controller
   imports: [SupabaseModule],
   providers: [FuentesFinanciacionService],
   controllers: [FuentesFinanciacionController],
-  exports: [FuentesFinanciacionService]
+  exports: [FuentesFinanciacionService],
 })
 export class FuentesFinanciacionModule {}

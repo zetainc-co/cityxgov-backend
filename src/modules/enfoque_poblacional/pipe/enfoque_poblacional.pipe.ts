@@ -9,7 +9,6 @@ import { EnfoquePoblacionalRequest } from '../dto/enfoque_poblacional';
 @Injectable()
 export class CreateEnfoquePoblacionalPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): EnfoquePoblacionalRequest {
-    
     if (!value) {
       throw new BadRequestException({
         status: false,
@@ -125,7 +124,6 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
 @Injectable()
 export class ValidateIdPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): number {
-    
     if (value === undefined || value === null || value === '') {
       throw new BadRequestException({
         status: false,
