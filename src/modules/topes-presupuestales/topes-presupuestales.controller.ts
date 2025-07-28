@@ -24,7 +24,7 @@ export class TopesPresupuestalesController {
     return await this.topesPresupuestalesService.findAll();
   }
 
-  @Get('año/:año')
+  @Get('ano/:año')
   @Roles('superadmin', 'admin')
   async findByAño(@Param('año') año: string) {
     return await this.topesPresupuestalesService.findByAño(+año);

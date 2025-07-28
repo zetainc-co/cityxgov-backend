@@ -2,6 +2,12 @@ import { ModuloConfig } from 'src/modules/area/dto/area.dto';
 
 export const MODULOS_DISPONIBLES = [
   {
+    id: 'entidad-territorial',
+    nombre: 'Entidad Territorial',
+    descripcion: 'Gestión de entidad territorial',
+    submodulos: [],
+  },
+  {
     id: 'usuarios',
     nombre: 'Usuarios',
     descripcion: 'Gestión de usuarios, roles y dependencias',
@@ -32,22 +38,14 @@ export const MODULOS_DISPONIBLES = [
     ],
   },
   {
-    id: 'entidad-territorial',
-    nombre: 'Entidad Territorial',
-    descripcion: 'Gestión de entidad territorial',
-    submodulos: [], // Sin submódulos por el momento
-  },
-  {
     id: 'poai',
     nombre: 'POAI',
     descripcion: 'Gestión del Plan Operativo Anual de Inversiones',
     submodulos: [
-      'banco-proyecto',
-      'meta-producto',
-      'meta-resultado',
-      'programacion-financiera',
-      'programacion-fisica',
+      'banco-proyectos',
       'topes-presupuestales',
+      'programacion-financiera-poai',
+      'programacion-fisica-poai',
     ],
   },
 ];

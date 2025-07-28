@@ -45,6 +45,46 @@ export class BancoProyectosService {
     }
   }
 
+  // Obtiene todos los proyectos con sus relaciones
+  async findAllWithRelations(): Promise<BancoProyectosResponse> {
+    try {
+      const { data, error } = await this.supabaseService.clientAdmin
+        .from('banco_proyectos')
+        .select(`
+          *,
+          proyecto_metas(
+            meta_producto_id,
+            meta_producto(
+              *,
+              caracterizacion_mga(*)
+            )
+          )
+        `)
+
+      if (error) {
+        throw new InternalServerErrorException(
+          'Error al obtener proyectos: ' + error.message,
+        );
+      }
+
+      return {
+        status: true,
+        message: 'Proyectos encontrados correctamente',
+        data: data,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      return {
+        status: false,
+        message: 'Error al obtener proyectos',
+        error: error.message,
+      };
+    }
+  }
+
   // Obtiene un proyecto por su ID
   async findOne(id: number): Promise<BancoProyectosResponse> {
     try {

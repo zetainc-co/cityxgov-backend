@@ -33,6 +33,13 @@ export class BancoProyectosController {
     return await this.bancoProyectosService.findAll();
   }
 
+  //obtener todos los bancos de proyectos con relaciones
+  @Get('with-relations')
+  @Roles('superadmin', 'admin')
+  async findAllWithRelations() {
+    return await this.bancoProyectosService.findAllWithRelations();
+  }
+
   //obtener un banco de proyectos por id
   @Get(':id')
   @Roles('superadmin', 'admin')
