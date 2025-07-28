@@ -27,27 +27,40 @@ export class ValidateEntidadTerritorialPipe implements PipeTransform {
     return value;
   }
 
-  private isEntidadTerritorialRequest(value: any): value is EntidadTerritorialRequest {
+  private isEntidadTerritorialRequest(
+    value: any,
+  ): value is EntidadTerritorialRequest {
     return value && 'nombre_entidad' in value && 'nit' in value;
   }
 
-
-
-  private validateEntidadTerritorial(value: EntidadTerritorialRequest): EntidadTerritorialRequest {
+  private validateEntidadTerritorial(
+    value: EntidadTerritorialRequest,
+  ): EntidadTerritorialRequest {
     // Validar nombre de la entidad
     if (!value.nombre_entidad || value.nombre_entidad.trim() === '') {
-      throw new BadRequestException('El nombre de la entidad territorial es requerido');
+      throw new BadRequestException(
+        'El nombre de la entidad territorial es requerido',
+      );
     }
     if (value.nombre_entidad.trim().length > 100) {
-      throw new BadRequestException('El nombre de la entidad no puede tener más de 100 caracteres');
+      throw new BadRequestException(
+        'El nombre de la entidad no puede tener más de 100 caracteres',
+      );
     }
 
     // Validar nombre del representante legal
-    if (!value.nombre_representante_legal || value.nombre_representante_legal.trim() === '') {
-      throw new BadRequestException('El nombre del representante legal es requerido');
+    if (
+      !value.nombre_representante_legal ||
+      value.nombre_representante_legal.trim() === ''
+    ) {
+      throw new BadRequestException(
+        'El nombre del representante legal es requerido',
+      );
     }
     if (value.nombre_representante_legal.trim().length > 100) {
-      throw new BadRequestException('El nombre del representante legal no puede tener más de 100 caracteres');
+      throw new BadRequestException(
+        'El nombre del representante legal no puede tener más de 100 caracteres',
+      );
     }
 
     // Validar NIT
@@ -65,7 +78,9 @@ export class ValidateEntidadTerritorialPipe implements PipeTransform {
       throw new BadRequestException('El departamento es requerido');
     }
     if (value.departamento.trim().length > 100) {
-      throw new BadRequestException('El departamento no puede tener más de 100 caracteres');
+      throw new BadRequestException(
+        'El departamento no puede tener más de 100 caracteres',
+      );
     }
 
     // Validar categoría municipal (solo requerido, acepta cualquier string)
@@ -73,7 +88,9 @@ export class ValidateEntidadTerritorialPipe implements PipeTransform {
       throw new BadRequestException('La categoría municipal es requerida');
     }
     if (value.categoria_municipal.trim().length > 50) {
-      throw new BadRequestException('La categoría municipal no puede tener más de 50 caracteres');
+      throw new BadRequestException(
+        'La categoría municipal no puede tener más de 50 caracteres',
+      );
     }
 
     // Validar población
@@ -89,12 +106,16 @@ export class ValidateEntidadTerritorialPipe implements PipeTransform {
       throw new BadRequestException('La descripción es requerida');
     }
     if (value.descripcion.trim().length > 500) {
-      throw new BadRequestException('La descripción no puede tener más de 500 caracteres');
+      throw new BadRequestException(
+        'La descripción no puede tener más de 500 caracteres',
+      );
     }
 
     // Validar región (opcional)
     if (value.region && value.region.trim().length > 100) {
-      throw new BadRequestException('La región no puede tener más de 100 caracteres');
+      throw new BadRequestException(
+        'La región no puede tener más de 100 caracteres',
+      );
     }
 
     // Validar coordenadas de geolocalización (opcionales)
@@ -103,7 +124,9 @@ export class ValidateEntidadTerritorialPipe implements PipeTransform {
         throw new BadRequestException('La latitud debe ser un número válido');
       }
       if (value.latitud < -90 || value.latitud > 90) {
-        throw new BadRequestException('La latitud debe estar entre -90 y 90 grados');
+        throw new BadRequestException(
+          'La latitud debe estar entre -90 y 90 grados',
+        );
       }
     }
 
@@ -112,13 +135,20 @@ export class ValidateEntidadTerritorialPipe implements PipeTransform {
         throw new BadRequestException('La longitud debe ser un número válido');
       }
       if (value.longitud < -180 || value.longitud > 180) {
-        throw new BadRequestException('La longitud debe estar entre -180 y 180 grados');
+        throw new BadRequestException(
+          'La longitud debe estar entre -180 y 180 grados',
+        );
       }
     }
 
     // Validar dirección completa (opcional)
-    if (value.direccion_completa && value.direccion_completa.trim().length > 500) {
-      throw new BadRequestException('La dirección completa no puede tener más de 500 caracteres');
+    if (
+      value.direccion_completa &&
+      value.direccion_completa.trim().length > 500
+    ) {
+      throw new BadRequestException(
+        'La dirección completa no puede tener más de 500 caracteres',
+      );
     }
 
     return value;

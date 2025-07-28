@@ -29,7 +29,6 @@ export class OdsService {
         data: data,
         error: null,
       };
-
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -73,7 +72,6 @@ export class OdsService {
         message: 'ODS encontrado',
         data: data,
       };
-      
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -112,9 +110,7 @@ export class OdsService {
         message: 'ODS creado correctamente',
         data: data,
       };
-      
     } catch (error) {
-      
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -132,12 +128,11 @@ export class OdsService {
   async update(id: number, updateRequest: OdsRequest): Promise<OdsResponse> {
     try {
       //Verifica si el ODS existe
-      const { data, error } =
-        await this.supabaseService.clientAdmin
-          .from('ods')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
+      const { data, error } = await this.supabaseService.clientAdmin
+        .from('ods')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
       if (error) {
         throw new InternalServerErrorException('Error al validar ODS');
@@ -163,14 +158,15 @@ export class OdsService {
       }
 
       // Actualizar ODS
-      const { data: updatedData, error: updatedError } = await this.supabaseService.clientAdmin
-        .from('ods')
-        .update({
-          nombre: updateRequest.nombre,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .single();
+      const { data: updatedData, error: updatedError } =
+        await this.supabaseService.clientAdmin
+          .from('ods')
+          .update({
+            nombre: updateRequest.nombre,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .single();
 
       if (updatedError) {
         if (updatedError.code === '23505') {
@@ -207,12 +203,11 @@ export class OdsService {
   async delete(id: number): Promise<OdsResponse> {
     try {
       //Verifica si el ODS existe
-      const { data, error } =
-        await this.supabaseService.clientAdmin
-          .from('ods')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
+      const { data, error } = await this.supabaseService.clientAdmin
+        .from('ods')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
 
       if (error) {
         throw new InternalServerErrorException('Error al verificar ODS');

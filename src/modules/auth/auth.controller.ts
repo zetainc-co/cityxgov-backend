@@ -51,11 +51,11 @@ export class AuthController {
 
   @Patch('change-password')
   @UseGuards(JwtAuthGuard)
-  async changePassword(
-    @Req() req,
-    @Body() body: { newPassword: string }
-  ) {
-    return this.authService.changePassword(req.user.identificacion, body.newPassword);
+  async changePassword(@Req() req, @Body() body: { newPassword: string }) {
+    return this.authService.changePassword(
+      req.user.identificacion,
+      body.newPassword,
+    );
   }
 
   @Get('profile')
@@ -66,8 +66,8 @@ export class AuthController {
       message: 'Perfil obtenido correctamente',
       data: {
         user: req.user,
-        modulos_disponibles: req.user.area_modulos || {}
-      }
+        modulos_disponibles: req.user.area_modulos || {},
+      },
     };
   }
 }

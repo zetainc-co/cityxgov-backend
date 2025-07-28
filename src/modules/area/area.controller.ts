@@ -1,13 +1,13 @@
 import {
-    Get,
-    Post,
-    Body,
-    Param,
-    Patch,
-    Delete,
-    UsePipes,
-    UseGuards,
-    Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UsePipes,
+  UseGuards,
+  Controller,
 } from '@nestjs/common';
 import { AreaService } from './area.service';
 import { AreaRequest } from './dto/area.dto';
@@ -19,49 +19,45 @@ import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
 @Controller('area')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AreaController {
+  constructor(private readonly areaService: AreaService) {}
 
-    constructor(private readonly areaService: AreaService) {}
+  @Get()
+  @Roles('superadmin', 'admin')
+  findAll() {
+    return this.areaService.findAll();
+  }
 
-    @Get()
-    @Roles('superadmin', 'admin' )
-    findAll() {
-        return this.areaService.findAll();
-    }
+  @Get('modulos')
+  @Roles('superadmin', 'admin')
+  getModulos() {
+    return this.areaService.getModulos();
+  }
 
-    @Get('modulos')
-    @Roles('superadmin', 'admin')
-    getModulos() {
-        return this.areaService.getModulos();
-    }
+  @Get(':id')
+  @Roles('superadmin', 'admin')
+  @UsePipes(ValidateAreaPipe)
+  findOne(@Param('id') id: number) {
+    return this.areaService.findOne(id);
+  }
 
-    @Get(':id')
-    @Roles('superadmin', 'admin')
-    @UsePipes(ValidateAreaPipe)
-    findOne(@Param('id') id: number) {
-        return this.areaService.findOne(id);
-    }
+  @Post()
+  @Roles('superadmin')
+  @UsePipes(ValidateAreaPipe)
+  create(@Body() createRequest: AreaRequest) {
+    return this.areaService.create(createRequest);
+  }
 
+  @Patch(':id')
+  @Roles('superadmin')
+  @UsePipes(ValidateAreaPipe)
+  update(@Param('id') id: number, @Body() updateAreaRequest: AreaRequest) {
+    return this.areaService.update(id, updateAreaRequest);
+  }
 
-    @Post()
-    @Roles('superadmin')
-    @UsePipes(ValidateAreaPipe)
-    create(@Body() createRequest: AreaRequest) {
-        return this.areaService.create(createRequest);
-    }
-
-    @Patch(':id')
-    @Roles('superadmin')
-    @UsePipes(ValidateAreaPipe)
-    update(
-        @Param('id') id: number,
-        @Body() updateAreaRequest: AreaRequest) {
-        return this.areaService.update(id, updateAreaRequest);
-    }
-
-    @Delete(':id')
-    @Roles('superadmin')
-    @UsePipes(ValidateAreaPipe)
-    delete(@Param('id') id: number) {
-        return this.areaService.delete(id);
-    }
+  @Delete(':id')
+  @Roles('superadmin')
+  @UsePipes(ValidateAreaPipe)
+  delete(@Param('id') id: number) {
+    return this.areaService.delete(id);
+  }
 }

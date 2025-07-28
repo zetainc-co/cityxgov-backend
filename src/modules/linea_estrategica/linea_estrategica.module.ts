@@ -7,6 +7,6 @@ import { LineaEstrategicaController } from './linea_estrategica.controller';
   imports: [SupabaseModule],
   providers: [LineaEstrategicaService],
   controllers: [LineaEstrategicaController],
-  exports: [LineaEstrategicaService]
+  exports: [LineaEstrategicaService],
 })
 export class LineaEstrategicaModule {}

@@ -6,11 +6,7 @@ import { FuentesFinanciacionModule } from '../fuentes_financiacion/fuentes_finan
 import { MetaProductoModule } from '../meta_producto/meta_producto.module';
 
 @Module({
-  imports: [
-    SupabaseModule,
-    FuentesFinanciacionModule,
-    MetaProductoModule,
-  ],
+  imports: [SupabaseModule, FuentesFinanciacionModule, MetaProductoModule],
   providers: [ProgramacionFinancieraService],
   controllers: [ProgramacionFinancieraController],
   exports: [ProgramacionFinancieraService],
