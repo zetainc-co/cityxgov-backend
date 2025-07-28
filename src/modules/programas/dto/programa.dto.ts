@@ -19,5 +19,3 @@ export interface ProgramaResponse {
   data?: Programa[];
   error?: any;
 }
-
-

@@ -1,13 +1,13 @@
 import {
-    Get,
-    Post,
-    Body,
-    Param,
-    Patch,
-    Delete,
-    UsePipes,
-    UseGuards,
-    Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UsePipes,
+  UseGuards,
+  Controller,
 } from '@nestjs/common';
 import { EntidadTerritorialService } from './entidad_territorial.service';
 import { EntidadTerritorialRequest } from './dto/entidad_territorial.dto';
@@ -19,52 +19,52 @@ import { JwtAuthGuard } from 'src/modules/auth/guard/jwt-auth.guard';
 @Controller('entidad-territorial')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EntidadTerritorialController {
+  constructor(
+    private readonly entidadTerritorialService: EntidadTerritorialService,
+  ) {}
 
-    constructor(private readonly entidadTerritorialService: EntidadTerritorialService) {}
+  @Get()
+  @Roles('superadmin', 'admin')
+  getEntidad() {
+    return this.entidadTerritorialService.getEntidad();
+  }
 
-    @Get()
-    @Roles('superadmin', 'admin')
-    getEntidad() {
-        return this.entidadTerritorialService.getEntidad();
-    }
+  @Post()
+  @Roles('superadmin', 'admin')
+  @UsePipes(ValidateEntidadTerritorialPipe)
+  createEntidad(@Body() createRequest: EntidadTerritorialRequest) {
+    return this.entidadTerritorialService.createEntidad(createRequest);
+  }
 
-    @Post()
-    @Roles('superadmin', 'admin')
-    @UsePipes(ValidateEntidadTerritorialPipe)
-    createEntidad(@Body() createRequest: EntidadTerritorialRequest) {
-        return this.entidadTerritorialService.createEntidad(createRequest);
-    }
+  @Patch()
+  @Roles('superadmin', 'admin')
+  @UsePipes(ValidateEntidadTerritorialPipe)
+  updateEntidad(@Body() updateRequest: EntidadTerritorialRequest) {
+    return this.entidadTerritorialService.updateEntidad(updateRequest);
+  }
 
-    @Patch()
-    @Roles('superadmin', 'admin')
-    @UsePipes(ValidateEntidadTerritorialPipe)
-    updateEntidad(@Body() updateRequest: EntidadTerritorialRequest) {
-        return this.entidadTerritorialService.updateEntidad(updateRequest);
-    }
+  @Delete()
+  @Roles('superadmin')
+  deleteEntidad() {
+    return this.entidadTerritorialService.deleteEntidad();
+  }
 
-    @Delete()
-    @Roles('superadmin')
-    deleteEntidad() {
-        return this.entidadTerritorialService.deleteEntidad();
-    }
+  @Get('organigrama')
+  @Roles('superadmin', 'admin')
+  getOrganigrama() {
+    return this.entidadTerritorialService.getOrganigrama();
+  }
 
-    @Get('organigrama')
-    @Roles('superadmin', 'admin')
-    getOrganigrama() {
-        return this.entidadTerritorialService.getOrganigrama();
-    }
+  @Patch('organigrama')
+  @Roles('superadmin', 'admin')
+  @UsePipes(ValidateEntidadTerritorialPipe)
+  updateOrganigrama(@Body() organigrama: any) {
+    return this.entidadTerritorialService.updateOrganigrama(organigrama);
+  }
 
-    @Patch('organigrama')
-    @Roles('superadmin', 'admin')
-    @UsePipes(ValidateEntidadTerritorialPipe)
-    updateOrganigrama(@Body() organigrama: any) {
-        return this.entidadTerritorialService.updateOrganigrama(organigrama);
-    }
-
-    @Delete('organigrama')
-    @Roles('superadmin', 'admin')
-    deleteOrganigrama() {
-        return this.entidadTerritorialService.deleteOrganigrama();
-    }
-
+  @Delete('organigrama')
+  @Roles('superadmin', 'admin')
+  deleteOrganigrama() {
+    return this.entidadTerritorialService.deleteOrganigrama();
+  }
 }

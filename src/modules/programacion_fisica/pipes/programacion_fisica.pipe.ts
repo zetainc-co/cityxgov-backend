@@ -1,10 +1,14 @@
-import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import {
+  ArgumentMetadata,
+  BadRequestException,
+  Injectable,
+  PipeTransform,
+} from '@nestjs/common';
 import { ProgramacionFisicaRequest } from '../dto/programacion_fisica.dto';
 
 @Injectable()
 export class CreateProgramacionFisicaPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): ProgramacionFisicaRequest {
-
     if (!value) {
       throw new BadRequestException({
         status: false,
@@ -22,7 +26,8 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
       });
     }
 
-    const { meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } = value;
+    const { meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } =
+      value;
 
     // Validaciones de campos requeridos
     if (meta_id === undefined || meta_id === null) {
@@ -58,8 +63,12 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
 
   private validatePeriodoValue(value: any, periodo: string): number {
     // Si es undefined, null, vacío o string vacío, retornar 0
-    if (value === undefined || value === null || value === '' ||
-      (typeof value === 'string' && value.trim() === '')) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      (typeof value === 'string' && value.trim() === '')
+    ) {
       return 0;
     }
 
@@ -99,7 +108,6 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
 @Injectable()
 export class ValidateIdPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): number {
-
     if (value === undefined || value === null || value === '') {
       throw new BadRequestException({
         status: false,

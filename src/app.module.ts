@@ -19,6 +19,9 @@ import { EnfoquePoblacionalModule } from './modules/enfoque_poblacional/enfoque_
 import { ProgramacionFisicaModule } from './modules/programacion_fisica/programacion_fisica.module';
 import { FuentesFinanciacionModule } from './modules/fuentes_financiacion/fuentes_financiacion.module';
 import { ProgramacionFinancieraModule } from './modules/programacion_financiera/programacion_financiera.module';
+import { PoaiModule } from './modules/poai/poai.module';
+import { BancoProyectosModule } from './modules/banco-proyectos/banco-proyectos.module';
+import { TopesPresupuestalesModule } from './modules/topes-presupuestales/topes-presupuestales.module';
 
 @Module({
   imports: [
@@ -42,9 +45,11 @@ import { ProgramacionFinancieraModule } from './modules/programacion_financiera/
     EntidadTerritorialModule,
     FuentesFinanciacionModule,
     ProgramacionFinancieraModule,
+    PoaiModule,
+    BancoProyectosModule,
+    TopesPresupuestalesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-
 export class AppModule {}

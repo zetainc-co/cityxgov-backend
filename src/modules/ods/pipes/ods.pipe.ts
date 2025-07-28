@@ -9,7 +9,6 @@ import { OdsRequest } from '../dto/ods.dto';
 @Injectable()
 export class CreateOdsPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): OdsRequest {
-    
     if (!value) {
       throw new BadRequestException({
         status: false,
@@ -82,7 +81,6 @@ export class CreateOdsPipe implements PipeTransform {
 @Injectable()
 export class ValidateIdPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): number {
-    
     if (value === undefined || value === null || value === '') {
       throw new BadRequestException({
         status: false,

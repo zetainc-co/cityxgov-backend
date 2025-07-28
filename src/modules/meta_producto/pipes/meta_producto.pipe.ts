@@ -9,7 +9,6 @@ import { MetaProductoRequest } from '../dto/meta_producto.dto';
 @Injectable()
 export class CreateMetaProductoPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): MetaProductoRequest {
-
     if (!value) {
       throw new BadRequestException({
         status: false,
@@ -40,7 +39,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
       orientacion,
       // sector,
       total_cuatrienio,
-      meta_resultado_ids
+      meta_resultado_ids,
     } = value;
 
     // Validar campos requeridos
@@ -65,7 +64,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
       orientacion: orientacion.trim(),
       // sector: sector.trim(),
       total_cuatrienio: total_cuatrienio.trim(),
-      meta_resultado_ids: meta_resultado_ids
+      meta_resultado_ids: meta_resultado_ids,
     };
   }
 
@@ -83,13 +82,16 @@ export class CreateMetaProductoPipe implements PipeTransform {
       'orientacion',
       // 'sector',
       'total_cuatrienio',
-      'meta_resultado_ids'
+      'meta_resultado_ids',
     ];
 
-    const missingFields = requiredFields.filter(field => {
+    const missingFields = requiredFields.filter((field) => {
       const fieldValue = value[field];
-      return fieldValue === undefined || fieldValue === null ||
-        (typeof fieldValue === 'string' && fieldValue.trim() === '');
+      return (
+        fieldValue === undefined ||
+        fieldValue === null ||
+        (typeof fieldValue === 'string' && fieldValue.trim() === '')
+      );
     });
 
     if (missingFields.length > 0) {
@@ -103,9 +105,14 @@ export class CreateMetaProductoPipe implements PipeTransform {
 
   private validateFieldTypes(value: any) {
     // Validar IDs numéricos
-    const numericFields = ['caracterizacion_mga_id', 'area_id', 'ods_id', 'enfoque_poblacional_id'];
+    const numericFields = [
+      'caracterizacion_mga_id',
+      'area_id',
+      'ods_id',
+      'enfoque_poblacional_id',
+    ];
 
-    numericFields.forEach(field => {
+    numericFields.forEach((field) => {
       const numValue = Number(value[field]);
       if (isNaN(numValue) || !Number.isInteger(numValue) || numValue <= 0) {
         throw new BadRequestException({
@@ -117,9 +124,16 @@ export class CreateMetaProductoPipe implements PipeTransform {
     });
 
     // Validar campos de texto
-    const stringFields = ['linea_base', 'instrumento_planeacion', 'nombre', 'meta_numerica', 'orientacion', 'total_cuatrienio'];
+    const stringFields = [
+      'linea_base',
+      'instrumento_planeacion',
+      'nombre',
+      'meta_numerica',
+      'orientacion',
+      'total_cuatrienio',
+    ];
 
-    stringFields.forEach(field => {
+    stringFields.forEach((field) => {
       if (typeof value[field] !== 'string') {
         throw new BadRequestException({
           status: false,
@@ -172,7 +186,8 @@ export class CreateMetaProductoPipe implements PipeTransform {
     if (invalidIds.length > 0) {
       throw new BadRequestException({
         status: false,
-        message: 'Todos los IDs de meta_resultado deben ser números enteros positivos',
+        message:
+          'Todos los IDs de meta_resultado deben ser números enteros positivos',
         data: [],
       });
     }
@@ -182,7 +197,6 @@ export class CreateMetaProductoPipe implements PipeTransform {
 @Injectable()
 export class ValidateIdPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): number {
-
     if (value === undefined || value === null || value === '') {
       throw new BadRequestException({
         status: false,

@@ -1,10 +1,17 @@
-import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import {
+  ArgumentMetadata,
+  BadRequestException,
+  Injectable,
+  PipeTransform,
+} from '@nestjs/common';
 import { ProgramacionFinancieraRequest } from '../dto/programacion_financiera.dto';
 
 @Injectable()
 export class CreateProgramacionFinancieraPipe implements PipeTransform {
-  transform(value: any, metadata: ArgumentMetadata): ProgramacionFinancieraRequest {
-
+  transform(
+    value: any,
+    metadata: ArgumentMetadata,
+  ): ProgramacionFinancieraRequest {
     if (!value) {
       throw new BadRequestException({
         status: false,
@@ -22,7 +29,14 @@ export class CreateProgramacionFinancieraPipe implements PipeTransform {
       });
     }
 
-    const { fuente_id, meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } = value;
+    const {
+      fuente_id,
+      meta_id,
+      periodo_2024,
+      periodo_2025,
+      periodo_2026,
+      periodo_2027,
+    } = value;
 
     // Validaciones de campos requeridos
     if (fuente_id === undefined || fuente_id === null) {
@@ -45,7 +59,8 @@ export class CreateProgramacionFinancieraPipe implements PipeTransform {
     if (!Number.isInteger(fuente_id) || fuente_id <= 0) {
       throw new BadRequestException({
         status: false,
-        message: 'El ID de fuente de financiación debe ser un número entero positivo',
+        message:
+          'El ID de fuente de financiación debe ser un número entero positivo',
         data: [],
       });
     }
@@ -75,8 +90,12 @@ export class CreateProgramacionFinancieraPipe implements PipeTransform {
 
   private validatePeriodoValue(value: any, periodo: string): number {
     // Si es undefined, null, vacío o string vacío, retornar 0
-    if (value === undefined || value === null || value === '' ||
-      (typeof value === 'string' && value.trim() === '')) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      (typeof value === 'string' && value.trim() === '')
+    ) {
       return 0;
     }
 
@@ -122,7 +141,6 @@ export class CreateProgramacionFinancieraPipe implements PipeTransform {
 @Injectable()
 export class ValidateIdPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): number {
-
     if (value === undefined || value === null || value === '') {
       throw new BadRequestException({
         status: false,

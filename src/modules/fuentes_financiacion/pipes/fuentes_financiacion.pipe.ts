@@ -8,8 +8,10 @@ import { FuentesFinanciacionRequest } from '../dto/fuentes_financiacion';
 
 @Injectable()
 export class CreateFuentesFinanciacionPipe implements PipeTransform {
-  transform(value: any, metadata: ArgumentMetadata): FuentesFinanciacionRequest {
-    
+  transform(
+    value: any,
+    metadata: ArgumentMetadata,
+  ): FuentesFinanciacionRequest {
     if (!value) {
       throw new BadRequestException({
         status: false,
@@ -125,7 +127,6 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
 @Injectable()
 export class ValidateIdPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): number {
-    
     if (value === undefined || value === null || value === '') {
       throw new BadRequestException({
         status: false,
@@ -157,4 +158,4 @@ export class ValidateIdPipe implements PipeTransform {
 
     return numericValue;
   }
-} 
+}

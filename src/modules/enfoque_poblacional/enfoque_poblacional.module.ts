@@ -4,9 +4,9 @@ import { EnfoquePoblacionalService } from './enfoque_poblacional.service';
 import { EnfoquePoblacionalController } from './enfoque_poblacional.controller';
 
 @Module({
-    imports: [SupabaseModule],
-    controllers: [EnfoquePoblacionalController],
-    providers: [EnfoquePoblacionalService],
-    exports: [EnfoquePoblacionalService],
+  imports: [SupabaseModule],
+  controllers: [EnfoquePoblacionalController],
+  providers: [EnfoquePoblacionalService],
+  exports: [EnfoquePoblacionalService],
 })
 export class EnfoquePoblacionalModule {}

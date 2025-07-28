@@ -9,4 +9,4 @@ import { SupabaseModule } from 'src/config/supabase/supabase.module';
   providers: [MetaProductoService],
   exports: [MetaProductoService],
 })
-export class MetaProductoModule {} 
+export class MetaProductoModule {}
