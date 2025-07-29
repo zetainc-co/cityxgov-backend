@@ -16,6 +16,7 @@ import { ProgramacionFisicaService } from './programacion_fisica.service';
 import {
   CreateProgramacionFisicaPipe,
   ValidateIdPipe,
+  UpdateMultipleProgramacionFisicaPipe,
 } from './pipes/programacion_fisica.pipe';
 
 @Controller('programacion-fisica')
@@ -25,21 +26,18 @@ export class ProgramacionFisicaController {
     private readonly programacionFisicaService: ProgramacionFisicaService,
   ) {}
 
-  // Obtiene todas las programaciones físicas
   @Get()
   @Roles('superadmin', 'admin')
   async findAll() {
     return this.programacionFisicaService.findAll();
   }
 
-  // Obtiene una programacion física por su id
   @Get(':id')
   @Roles('superadmin', 'admin')
   async findOne(@Param('id', ValidateIdPipe) id: number) {
     return this.programacionFisicaService.findOne(id);
   }
 
-  // Crea una nueva programacion física
   @Post()
   @Roles('superadmin', 'admin')
   async create(
@@ -49,7 +47,16 @@ export class ProgramacionFisicaController {
     return this.programacionFisicaService.create(createRequest);
   }
 
-  // Actualiza una programacion física
+  // Actualiza múltiples programaciones físicas POAI
+  @Patch('update-multiple')
+  @Roles('superadmin', 'admin')
+  async updateMultiple(
+    @Body(UpdateMultipleProgramacionFisicaPipe)
+    requests: ProgramacionFisicaRequest[],
+  ) {
+    return this.programacionFisicaService.updateMultiple(requests);
+  }
+
   @Patch(':id')
   @Roles('superadmin', 'admin')
   async update(
@@ -60,7 +67,6 @@ export class ProgramacionFisicaController {
     return this.programacionFisicaService.update(id, updateRequest);
   }
 
-  // Elimina una programacion física
   @Delete(':id')
   @Roles('superadmin', 'admin')
   async delete(@Param('id', ValidateIdPipe) id: number) {
