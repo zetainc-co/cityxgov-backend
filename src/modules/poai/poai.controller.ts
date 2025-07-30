@@ -1,102 +1,88 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { PoaiService } from './poai.service';
-import { PoaiVigenciaRequest } from './dto/poai.dto';
+import { PoaiRequest, PoaiUpdateRequest, PoaiResponse } from './dto/poai.dto';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { RolesGuard } from '../rol/guard/roles.guard';
+import { Roles } from '../rol/decorator/roles.decorator';
+import { Request } from 'express';
 
 @Controller('poai')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class PoaiController {
   constructor(private readonly poaiService: PoaiService) {}
 
-  @Post('vigencias')
-  async createVigencia(@Body() createRequest: PoaiVigenciaRequest) {
-    return await this.poaiService.createVigencia(createRequest);
+  // Obtener todos los POAIs
+  @Get()
+  @Roles('admin', 'superadmin', 'planificador', 'consultor')
+  async findAll(): Promise<PoaiResponse> {
+    return await this.poaiService.findAll();
   }
 
-  @Get('vigencias')
-  async findAllVigencias() {
-    return await this.poaiService.findAllVigencias();
+  // Obtener líneas estratégicas disponibles
+  @Get('lineas-estrategicas')
+  @Roles('admin', 'superadmin', 'planificador', 'consultor')
+  async getLineasEstrategicas(): Promise<PoaiResponse> {
+    const data = await this.poaiService.getLineasEstrategicasDisponibles();
+    return {
+      status: true,
+      message: 'Líneas estratégicas obtenidas correctamente',
+      data,
+    };
   }
 
-  @Get('vigencias/:id')
-  async findVigenciaById(@Param('id') id: string) {
-    return await this.poaiService.findVigenciaById(+id);
+  // Obtener un POAI por ID
+  @Get(':id')
+  @Roles('admin', 'superadmin', 'planificador', 'consultor')
+  async findOne(@Param('id') id: string): Promise<PoaiResponse> {
+    return await this.poaiService.findOne(+id);
   }
 
-  @Get('vigencias/año/:año')
-  async findVigenciaByAño(@Param('año') año: string) {
-    return await this.poaiService.findVigenciaByAño(+año);
+  // Crear un nuevo POAI
+  @Post()
+  @Roles('admin', 'superadmin', 'planificador')
+  async create(@Body() createRequest: PoaiRequest, @Req() req: Request): Promise<PoaiResponse> {
+    try {
+      const userId = req.user?.['id'];
+      const poai = await this.poaiService.create(createRequest, userId);
+
+      return {
+        status: true,
+        message: 'POAI creado correctamente',
+        data: poai
+      };
+    } catch (error) {
+      return {
+        status: false,
+        message: 'Error al crear POAI',
+        error: error.message
+      };
+    }
   }
 
-  @Put('vigencias/:id')
-  async updateVigencia(
+  // Actualizar un POAI
+  @Patch(':id')
+  @Roles('admin', 'superadmin', 'planificador')
+  async update(
     @Param('id') id: string,
-    @Body() updateRequest: PoaiVigenciaRequest
-  ) {
-    return await this.poaiService.updateVigencia(+id, updateRequest);
+    @Body() updateRequest: PoaiUpdateRequest,
+  ): Promise<PoaiResponse> {
+    return await this.poaiService.update(+id, updateRequest);
   }
 
-  @Delete('vigencias/:id')
-  async deleteVigencia(@Param('id') id: string) {
-    return await this.poaiService.deleteVigencia(+id);
-  }
-
-  @Get('data/:año')
-  async getPoaiDataByAño(@Param('año') año: string) {
-    return await this.poaiService.getPoaiDataByAño(+año);
-  }
-
-  @Put('programacion-financiera')
-  async updateProgramacionFinanciera(
-    @Body() body: {
-      metaId: number;
-      fuenteId: number;
-      año: number;
-      valor: number;
-    }
-  ) {
-    // Validar topes antes de actualizar
-    const validationResult = await this.poaiService.validateTopesPresupuestales(
-      body.año,
-      body.fuenteId,
-      body.valor
-    );
-
-    if (!validationResult.status) {
-      return validationResult;
-    }
-
-    return await this.poaiService.updateProgramacionFinanciera(
-      body.metaId,
-      body.fuenteId,
-      body.año,
-      body.valor
-    );
-  }
-
-  @Put('programacion-fisica')
-  async updateProgramacionFisica(
-    @Body() body: {
-      metaId: number;
-      año: number;
-      valor: number;
-    }
-  ) {
-    return await this.poaiService.updateProgramacionFisica(
-      body.metaId,
-      body.año,
-      body.valor
-    );
-  }
-
-  @Get('validate-topes')
-  async validateTopes(
-    @Query('año') año: string,
-    @Query('fuenteId') fuenteId: string,
-    @Query('valor') valor: string
-  ) {
-    return await this.poaiService.validateTopesPresupuestales(
-      +año,
-      +fuenteId,
-      +valor
-    );
+  // Eliminar un POAI
+  @Delete(':id')
+  @Roles('admin', 'superadmin')
+  async delete(@Param('id') id: string): Promise<PoaiResponse> {
+    return await this.poaiService.delete(+id);
   }
 }

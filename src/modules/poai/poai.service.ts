@@ -1,38 +1,52 @@
 import {
   Injectable,
-  InternalServerErrorException,
   BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
-import { SupabaseService } from '../../config/supabase/supabase.service';
 import {
-  PoaiVigenciaResponse,
-  PoaiVigenciaRequest,
-  PoaiDataResponse
+  PoaiRequest,
+  PoaiUpdateRequest,
+  PoaiResponse,
+  PoaiCompleto,
+  PoaiCompletoData,
 } from './dto/poai.dto';
+import { SupabaseService } from '../../config/supabase/supabase.service';
 
 @Injectable()
 export class PoaiService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(private supabaseService: SupabaseService) { }
 
-  // Obtiene todas las vigencias
-  async findAllVigencias(): Promise<PoaiVigenciaResponse> {
+  // Obtiene todos los POAIs completos
+  async findAll(): Promise<PoaiResponse> {
     try {
-      const { data, error } = await this.supabaseService.client
-        .from('poai_vigencias')
-        .select('*')
-        .order('año', { ascending: false });
+      // Obtener todos los POAIs con relaciones básicas
+      const { data: poais, error } = await this.supabaseService.clientAdmin
+        .from('poai')
+        .select(`
+          *,
+          entidad_territorial:entidad_territorial_id(id, nombre_entidad, nombre_municipio, departamento),
+          created_by_user:created_by(id, nombre, apellido)
+        `)
+        .order('created_at', { ascending: false });
 
       if (error) {
         throw new InternalServerErrorException(
-          'Error al obtener vigencias: ' + error.message,
+          'Error al obtener POAIs: ' + error.message,
         );
+      }
+
+      // Para cada POAI, obtener datos relacionados
+      const poaisCompletos: PoaiCompletoData[] = [];
+      for (const poai of poais || []) {
+        const poaiCompleto = await this.getPoaiCompletoData(poai);
+        poaisCompletos.push(poaiCompleto);
       }
 
       return {
         status: true,
-        message: 'Vigencias encontradas correctamente',
-        data: data,
-        error: null,
+        message: 'POAIs encontrados correctamente',
+        data: poaisCompletos,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -41,40 +55,46 @@ export class PoaiService {
 
       return {
         status: false,
-        message: 'Error al obtener vigencias',
+        message: 'Error al obtener POAIs',
         error: error.message,
       };
     }
   }
 
-  // Obtiene una vigencia por su ID
-  async findVigenciaById(id: number): Promise<PoaiVigenciaResponse> {
+  // Obtiene un POAI completo por ID
+  async findOne(id: number): Promise<PoaiResponse> {
     try {
-      const { data, error } = await this.supabaseService.client
-        .from('poai_vigencias')
-        .select('*')
+      const { data, error } = await this.supabaseService.clientAdmin
+        .from('poai')
+        .select(`
+          *,
+          entidad_territorial:entidad_territorial_id(id, nombre_entidad, nombre_municipio, departamento),
+          created_by_user:created_by(id, nombre, apellido)
+        `)
         .eq('id', id)
         .maybeSingle();
 
       if (error) {
         throw new InternalServerErrorException(
-          'Error al obtener vigencia: ' + error.message,
+          'Error al obtener POAI: ' + error.message,
         );
       }
 
       if (!data) {
         return {
           status: false,
-          message: `No existe una vigencia con el ID ${id}`,
+          message: `No existe un POAI con el ID ${id}`,
           error: 'ID no encontrado',
-          data: [],
         };
       }
 
+      // Obtener datos completos del POAI
+      const poaiCompleto = await this.getPoaiCompletoData(data);
+
       return {
         status: true,
-        message: 'Vigencia encontrada correctamente',
-        data: data,
+        message: 'POAI encontrado correctamente',
+        data: poaiCompleto,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -83,129 +103,94 @@ export class PoaiService {
 
       return {
         status: false,
-        message: 'Error al obtener vigencia',
+        message: 'Error al obtener POAI',
         error: error.message,
       };
     }
   }
 
-  // Obtiene una vigencia por año
-  async findVigenciaByAño(año: number): Promise<PoaiVigenciaResponse> {
+  // Crear POAI
+  async create(createRequest: PoaiRequest, userId?: number) {
     try {
-      const { data, error } = await this.supabaseService.client
-        .from('poai_vigencias')
-        .select('*')
-        .eq('año', año)
-        .maybeSingle();
+      // Buscar el usuario real por identificación si userId es una identificación
+      let realUserId = userId;
+      if (userId && userId.toString().length > 8) {
+        // Si es muy largo, probablemente es una identificación, buscar el usuario real
+        const { data: user, error: userError } = await this.supabaseService.clientAdmin
+          .from('usuarios')
+          .select('id')
+          .eq('identificacion', userId.toString())
+          .single();
 
-      if (error) {
-        throw new InternalServerErrorException(
-          'Error al obtener vigencia: ' + error.message,
-        );
+        if (userError) {
+          realUserId = undefined; // Usar undefined si no se encuentra
+        } else {
+          realUserId = user.id;
+        }
       }
 
-      if (!data) {
-        return {
-          status: false,
-          message: `No existe una vigencia para el año ${año}`,
-          error: 'Año no encontrado',
-          data: [],
-        };
-      }
-
-      return {
-        status: true,
-        message: 'Vigencia encontrada correctamente',
-        data: data,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      return {
-        status: false,
-        message: 'Error al obtener vigencia',
-        error: error.message,
-      };
-    }
-  }
-
-  // Crea una nueva vigencia
-  async createVigencia(createRequest: PoaiVigenciaRequest): Promise<PoaiVigenciaResponse> {
-    try {
-      const { data, error } = await this.supabaseService.client
-        .from('poai_vigencias')
+      const { data: poai, error } = await this.supabaseService.clientAdmin
+        .from('poai')
         .insert({
           año: createRequest.año,
-          descripcion: createRequest.descripcion,
+          entidad_territorial_id: createRequest.entidad_territorial_id,
+          created_by: realUserId
         })
         .select()
         .single();
 
       if (error) {
-        if (error.code === '23505') {
-          return {
-            status: false,
-            message: 'Ya existe una vigencia para este año',
-            error: 'Vigencia duplicada',
-            data: [],
-          };
-        }
-        throw new InternalServerErrorException(
-          'Error al crear vigencia: ' + error.message,
-        );
+        throw new Error(`Error al crear POAI: ${error.message}`);
       }
 
-      return {
-        status: true,
-        message: 'Vigencia creada correctamente',
-        data: data,
-      };
+      return poai;
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      return {
-        status: false,
-        message: 'Error al crear vigencia',
-        error: error.message,
-      };
+      throw new Error(`Error al crear POAI: ${error.message}`);
     }
   }
 
-  // Actualiza una vigencia
-  async updateVigencia(id: number, updateRequest: PoaiVigenciaRequest): Promise<PoaiVigenciaResponse> {
+  // Actualiza un POAI
+  async update(id: number, updateRequest: PoaiUpdateRequest): Promise<PoaiResponse> {
     try {
-      const { data, error } = await this.supabaseService.client
-        .from('poai_vigencias')
-        .update({
-          descripcion: updateRequest.descripcion,
-        })
+      // Verificar si el POAI existe
+      const { data: existingPoai } = await this.supabaseService.clientAdmin
+        .from('poai')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!existingPoai) {
+          return {
+            status: false,
+          message: `No existe un POAI con el ID ${id}`,
+          error: 'ID no encontrado',
+        };
+      }
+
+      // Preparar datos de actualización
+      const updateData: any = {
+        ...updateRequest,
+        updated_at: new Date().toISOString()
+      };
+
+      // Actualizar el POAI
+      const { data: poai, error: poaiError } = await this.supabaseService.clientAdmin
+        .from('poai')
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
 
-      if (error) {
+      if (poaiError) {
         throw new InternalServerErrorException(
-          'Error al actualizar vigencia: ' + error.message,
+          'Error al actualizar POAI: ' + poaiError.message,
         );
-      }
-
-      if (!data) {
-        return {
-          status: false,
-          message: `No existe una vigencia con el ID ${id}`,
-          error: 'ID no encontrado',
-          data: [],
-        };
       }
 
       return {
         status: true,
-        message: 'Vigencia actualizada correctamente',
-        data: data,
+        message: 'POAI actualizado correctamente',
+        data: poai,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -214,30 +199,45 @@ export class PoaiService {
 
       return {
         status: false,
-        message: 'Error al actualizar vigencia',
+        message: 'Error al actualizar POAI',
         error: error.message,
       };
     }
   }
 
-  // Elimina una vigencia
-  async deleteVigencia(id: number): Promise<PoaiVigenciaResponse> {
+  // Elimina un POAI
+  async delete(id: number): Promise<PoaiResponse> {
     try {
-      const { error } = await this.supabaseService.client
-        .from('poai_vigencias')
+      // Verificar si el POAI existe
+      const { data: existingPoai } = await this.supabaseService.clientAdmin
+        .from('poai')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!existingPoai) {
+        return {
+          status: false,
+          message: `No existe un POAI con el ID ${id}`,
+          error: 'ID no encontrado',
+        };
+      }
+
+      // Eliminar el POAI (las líneas estratégicas se eliminan en cascada)
+      const { error } = await this.supabaseService.clientAdmin
+        .from('poai')
         .delete()
         .eq('id', id);
 
       if (error) {
         throw new InternalServerErrorException(
-          'Error al eliminar vigencia: ' + error.message,
+          'Error al eliminar POAI: ' + error.message,
         );
       }
 
       return {
         status: true,
-        message: 'Vigencia eliminada correctamente',
-        data: [],
+        message: 'POAI eliminado correctamente',
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -246,188 +246,121 @@ export class PoaiService {
 
       return {
         status: false,
-        message: 'Error al eliminar vigencia',
+        message: 'Error al eliminar POAI',
         error: error.message,
       };
     }
   }
 
-  // Obtiene todos los datos del POAI por año
-  async getPoaiDataByAño(año: number): Promise<PoaiDataResponse> {
+  // Obtiene líneas estratégicas disponibles
+  async getLineasEstrategicasDisponibles(): Promise<PoaiResponse> {
     try {
-      // Obtener vigencia
-      const vigenciaResponse = await this.findVigenciaByAño(año);
-      if (!vigenciaResponse.status) {
-        return {
-          status: false,
-          message: vigenciaResponse.message,
-          error: vigenciaResponse.error,
-        };
-      }
-
-      // Obtener líneas estratégicas
-      const { data: lineasEstrategicas } = await this.supabaseService.client
+      const { data: lineasEstrategicas, error } = await this.supabaseService.clientAdmin
         .from('linea_estrategica')
-        .select('*');
-
-      // Obtener metas resultado
-      const { data: metasResultado } = await this.supabaseService.client
-        .from('meta_resultado')
-        .select('*');
-
-      // Obtener metas producto
-      const { data: metasProducto } = await this.supabaseService.client
-        .from('meta_producto')
-        .select('*');
-
-      // Obtener topes presupuestales para el año
-      const { data: topesPresupuestales } = await this.supabaseService.client
-        .from('topes_presupuestales')
-        .select(`
-          *,
-          fuentes_financiacion(*)
-        `)
-        .eq('año', año);
-
-      // Obtener banco de proyectos
-      const { data: bancoProyectos } = await this.supabaseService.client
-        .from('banco_proyectos')
-        .select('*');
-
-      // Obtener programación financiera
-      const { data: programacionFinanciera } = await this.supabaseService.client
-        .from('programacion_financiera')
-        .select(`
-          *,
-          meta_producto(*),
-          fuentes_financiacion(*)
-        `);
-
-      // Obtener programación física
-      const { data: programacionFisica } = await this.supabaseService.client
-        .from('programacion_fisica')
-        .select(`
-          *,
-          meta_producto(*)
-        `);
-
-      return {
-        status: true,
-        message: 'Datos del POAI obtenidos correctamente',
-        data: {
-          vigencia: vigenciaResponse.data as any,
-          lineas_estrategicas: lineasEstrategicas || [],
-          metas_resultado: metasResultado || [],
-          metas_producto: metasProducto || [],
-          topes_presupuestales: topesPresupuestales || [],
-          banco_proyectos: bancoProyectos || [],
-          programacion_financiera: programacionFinanciera || [],
-          programacion_fisica: programacionFisica || []
-        },
-      };
-    } catch (error) {
-      return {
-        status: false,
-        message: 'Error al obtener datos del POAI',
-        error: error.message,
-      };
-    }
-  }
-
-  // Actualiza programación financiera
-  async updateProgramacionFinanciera(metaId: number, fuenteId: number, año: number, valor: number) {
-    try {
-      const campoPeriodo = `periodo_${año}`;
-
-      const { data, error } = await this.supabaseService.client
-        .from('programacion_financiera')
-        .update({ [campoPeriodo]: valor })
-        .eq('meta_id', metaId)
-        .eq('fuente_id', fuenteId)
-        .select()
-        .single();
+        .select('*')
+        .order('nombre');
 
       if (error) {
         throw new InternalServerErrorException(
-          'Error al actualizar programación financiera: ' + error.message,
+          'Error al obtener líneas estratégicas: ' + error.message,
         );
       }
 
       return {
         status: true,
-        message: 'Programación financiera actualizada correctamente',
-        data: data,
+        message: 'Líneas estratégicas obtenidas correctamente',
+        data: lineasEstrategicas,
       };
     } catch (error) {
-      return {
-        status: false,
-        message: 'Error al actualizar programación financiera',
-        error: error.message,
-      };
-    }
-  }
-
-  // Actualiza programación física
-  async updateProgramacionFisica(metaId: number, año: number, valor: number) {
-    try {
-      const campoPeriodo = `periodo_${año}`;
-
-      const { data, error } = await this.supabaseService.client
-        .from('programacion_fisica')
-        .update({ [campoPeriodo]: valor })
-        .eq('meta_id', metaId)
-        .select()
-        .single();
-
-      if (error) {
-        throw new InternalServerErrorException(
-          'Error al actualizar programación física: ' + error.message,
-        );
+      if (error instanceof BadRequestException) {
+        throw error;
       }
 
       return {
-        status: true,
-        message: 'Programación física actualizada correctamente',
-        data: data,
-      };
-    } catch (error) {
-      return {
         status: false,
-        message: 'Error al actualizar programación física',
+        message: 'Error al obtener líneas estratégicas',
         error: error.message,
       };
     }
   }
 
-  // Valida topes presupuestales
-  async validateTopesPresupuestales(año: number, fuenteId: number, valor: number) {
-    try {
-      const { data: tope } = await this.supabaseService.client
+  // Método privado para obtener datos completos de un POAI
+  private async getPoaiCompletoData(poai: any): Promise<PoaiCompletoData> {
+    // Obtener topes presupuestales del año del POAI
+    const { data: topesPresupuestales } = await this.supabaseService.clientAdmin
         .from('topes_presupuestales')
-        .select('tope_maximo')
-        .eq('año', año)
-        .eq('fuente_id', fuenteId)
-        .single();
+      .select('*')
+      .eq('año', poai.año);
 
-      if (tope && valor > tope.tope_maximo) {
-        return {
-          status: false,
-          message: `El valor excede el tope presupuestal de ${tope.tope_maximo}`,
-          error: 'Tope excedido',
-        };
-      }
+    // Obtener banco de proyectos del año del POAI
+    const { data: bancoProyectos } = await this.supabaseService.clientAdmin
+      .from('banco_proyectos')
+      .select('*')
+      .eq('año', poai.año);
+
+    // Obtener programación financiera solo del año específico
+    const { data: programacionFinancieraRaw } = await this.supabaseService.clientAdmin
+      .from('programacion_financiera')
+      .select(`
+        *,
+        fuente_financiacion:fuente_id(id, nombre, descripcion)
+      `)
+      .gt(`periodo_${poai.año}`, 0);
+
+    // Transformar para mostrar solo el período del año del POAI
+    const programacionFinanciera = programacionFinancieraRaw?.map(item => ({
+      id: item.id,
+      meta_id: item.meta_id,
+      fuente_id: item.fuente_id,
+      fuente_financiacion: item.fuente_financiacion,
+      [`periodo_${poai.año}`]: item[`periodo_${poai.año}`],
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    })) || [];
+
+    // Obtener programación física solo del año específico
+    const { data: programacionFisicaRaw } = await this.supabaseService.clientAdmin
+      .from('programacion_fisica')
+      .select('*')
+      .gt(`periodo_${poai.año}`, 0);
+
+    // Transformar para mostrar solo el período del año del POAI
+    const programacionFisica = programacionFisicaRaw?.map(item => ({
+      id: item.id,
+      meta_id: item.meta_id,
+      [`periodo_${poai.año}`]: item[`periodo_${poai.año}`],
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    })) || [];
+
+    // Obtener todas las líneas estratégicas disponibles (para el endpoint de líneas disponibles)
+    const { data: lineasEstrategicas } = await this.supabaseService.clientAdmin
+      .from('linea_estrategica')
+      .select('*')
+      .order('nombre');
+
+    // Obtener todas las metas de resultado
+    const { data: metasResultado } = await this.supabaseService.clientAdmin
+      .from('meta_resultado')
+      .select('*');
+
+    // Obtener todas las metas de producto
+    const { data: metasProducto } = await this.supabaseService.clientAdmin
+      .from('meta_producto')
+      .select('*');
 
       return {
-        status: true,
-        message: 'Tope válido',
-        data: true,
-      };
-    } catch (error) {
-      return {
-        status: false,
-        message: 'Error al validar topes',
-        error: error.message,
-      };
-    }
+      poai: {
+        ...poai,
+        lineas_estrategicas: lineasEstrategicas || []
+      },
+      topes_presupuestales: topesPresupuestales || [],
+      banco_proyectos: bancoProyectos || [],
+      programacion_financiera: programacionFinanciera,
+      programacion_fisica: programacionFisica,
+      lineas_estrategicas: lineasEstrategicas || [],
+      metas_resultado: metasResultado || [],
+      metas_producto: metasProducto || []
+    };
   }
 }

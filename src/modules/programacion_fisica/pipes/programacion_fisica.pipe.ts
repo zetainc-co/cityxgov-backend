@@ -75,9 +75,7 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
     // Convertir a número si es string
     let numericValue: number;
     if (typeof value === 'string') {
-      // Limpiar el valor de caracteres no numéricos excepto punto y coma
-      const cleanValue = value.replace(/[^\d.,]/g, '').replace(',', '.');
-      numericValue = Number(cleanValue);
+      numericValue = Number(value.trim());
     } else {
       numericValue = value;
     }
@@ -86,7 +84,7 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
     if (isNaN(numericValue) || typeof numericValue !== 'number') {
       throw new BadRequestException({
         status: false,
-        message: `La cantidad del período ${periodo} debe ser un número válido`,
+        message: `El valor del período ${periodo} debe ser un número válido`,
         data: [],
       });
     }
@@ -95,13 +93,145 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
     if (numericValue < 0) {
       throw new BadRequestException({
         status: false,
-        message: `La cantidad del período ${periodo} no puede ser negativa`,
+        message: `El valor del período ${periodo} no puede ser negativo`,
         data: [],
       });
     }
 
-    // Convertir a entero (redondear)
-    return Math.round(numericValue);
+    // Verificar que sea un entero
+    if (!Number.isInteger(numericValue)) {
+      throw new BadRequestException({
+        status: false,
+        message: `El valor del período ${periodo} debe ser un número entero`,
+        data: [],
+      });
+    }
+
+    return numericValue;
+  }
+}
+
+@Injectable()
+export class UpdateMultipleProgramacionFisicaPipe implements PipeTransform {
+  transform(value: any, metadata: ArgumentMetadata): ProgramacionFisicaRequest[] {
+    if (!value) {
+      throw new BadRequestException({
+        status: false,
+        message: 'Los datos son requeridos',
+        data: [],
+      });
+    }
+
+    // Verificar que es un array
+    if (!Array.isArray(value)) {
+      throw new BadRequestException({
+        status: false,
+        message: 'Los datos deben ser un array',
+        data: [],
+      });
+    }
+
+    // Verificar que el array no esté vacío
+    if (value.length === 0) {
+      throw new BadRequestException({
+        status: false,
+        message: 'El array no puede estar vacío',
+        data: [],
+      });
+    }
+
+    // Validar cada elemento del array
+    return value.map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        throw new BadRequestException({
+          status: false,
+          message: `El elemento ${index + 1} debe ser un objeto válido`,
+          data: [],
+        });
+      }
+
+      const { meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } = item;
+
+      // Validaciones de campos requeridos
+      if (meta_id === undefined || meta_id === null) {
+        throw new BadRequestException({
+          status: false,
+          message: `El ID de meta producto es requerido en el elemento ${index + 1}`,
+          data: [],
+        });
+      }
+
+      // Validaciones de tipos para IDs
+      if (!Number.isInteger(meta_id) || meta_id <= 0) {
+        throw new BadRequestException({
+          status: false,
+          message: `El ID de meta producto debe ser un número entero positivo en el elemento ${index + 1}`,
+          data: [],
+        });
+      }
+
+      // Validar y limpiar valores de períodos
+      const periodos = {
+        periodo_2024: this.validatePeriodoValue(periodo_2024 ?? null, '2024', index + 1),
+        periodo_2025: this.validatePeriodoValue(periodo_2025 ?? null, '2025', index + 1),
+        periodo_2026: this.validatePeriodoValue(periodo_2026 ?? null, '2026', index + 1),
+        periodo_2027: this.validatePeriodoValue(periodo_2027 ?? null, '2027', index + 1),
+      };
+
+      return {
+        meta_id,
+        ...periodos,
+      };
+    });
+  }
+
+  private validatePeriodoValue(value: any, periodo: string, elementIndex: number): number {
+    // Si es undefined, null, vacío o string vacío, retornar 0
+    if (
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      (typeof value === 'string' && value.trim() === '')
+    ) {
+      return 0;
+    }
+
+    // Convertir a número si es string
+    let numericValue: number;
+    if (typeof value === 'string') {
+      numericValue = Number(value.trim());
+    } else {
+      numericValue = value;
+    }
+
+    // Verificar que sea un número válido
+    if (isNaN(numericValue) || typeof numericValue !== 'number') {
+      throw new BadRequestException({
+        status: false,
+        message: `El valor del período ${periodo} debe ser un número válido en el elemento ${elementIndex}`,
+        data: [],
+      });
+    }
+
+    // Verificar que no sea negativo
+    if (numericValue < 0) {
+      throw new BadRequestException({
+        status: false,
+        message: `El valor del período ${periodo} no puede ser negativo en el elemento ${elementIndex}`,
+        data: [],
+      });
+    }
+
+    // Verificar que sea un entero
+    if (!Number.isInteger(numericValue)) {
+      throw new BadRequestException({
+        status: false,
+        message: `El valor del período ${periodo} debe ser un número entero en el elemento ${elementIndex}`,
+        data: [],
+      });
+    }
+
+    return numericValue;
   }
 }
 

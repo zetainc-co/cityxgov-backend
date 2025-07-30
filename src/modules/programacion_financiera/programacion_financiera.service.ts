@@ -1,6 +1,6 @@
 import {
-  BadRequestException,
   Injectable,
+  BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import {
@@ -94,8 +94,7 @@ export class ProgramacionFinancieraService {
   ): Promise<ProgramacionFinancieraResponse> {
     try {
       // Verificar que la fuente de financiación existe
-      const { data: fuenteExists, error: fuenteError } =
-        await this.supabaseService.clientAdmin
+      const { data: fuenteExists, error: fuenteError } = await this.supabaseService.clientAdmin
           .from('fuentes_financiacion')
           .select('id, nombre')
           .eq('id', createRequest.fuente_id)
@@ -111,8 +110,7 @@ export class ProgramacionFinancieraService {
       }
 
       // Verificar que la meta producto existe
-      const { data: metaExists, error: metaError } =
-        await this.supabaseService.clientAdmin
+      const { data: metaExists, error: metaError } = await this.supabaseService.clientAdmin
           .from('meta_producto')
           .select('id, nombre')
           .eq('id', createRequest.meta_id)
@@ -164,6 +162,120 @@ export class ProgramacionFinancieraService {
         message: 'Error al crear programacion financiera',
         error: error.message,
         data: [],
+      };
+    }
+  }
+
+  // Actualiza múltiples programaciones financieras POAI
+  async updateMultiple(requests: ProgramacionFinancieraRequest[]): Promise<ProgramacionFinancieraResponse> {
+    try {
+      const resultData: any[] = [];
+
+      for (const request of requests) {
+        // Verificar que la fuente de financiación existe
+        const { data: fuenteExists, error: fuenteError } =
+          await this.supabaseService.clientAdmin
+            .from('fuentes_financiacion')
+            .select('id, nombre')
+            .eq('id', request.fuente_id)
+            .single();
+
+        if (fuenteError || !fuenteExists) {
+          return {
+            status: false,
+            message: `No existe una fuente de financiación con el ID ${request.fuente_id}`,
+            error: 'Fuente de financiación no encontrada',
+            data: [],
+          };
+        }
+
+        // Verificar que la meta producto existe
+        const { data: metaExists, error: metaError } =
+          await this.supabaseService.clientAdmin
+            .from('meta_producto')
+            .select('id, nombre')
+            .eq('id', request.meta_id)
+            .single();
+
+        if (metaError || !metaExists) {
+          return {
+            status: false,
+            message: `No existe una meta producto con el ID ${request.meta_id}`,
+            error: 'Meta producto no encontrada',
+            data: [],
+          };
+        }
+
+        // Buscar el registro existente para esta fuente + meta
+        const { data: existingData, error: existingError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_financiera')
+            .select('*')
+            .eq('fuente_id', request.fuente_id)
+            .eq('meta_id', request.meta_id)
+            .maybeSingle();
+
+        if (existingError && existingError.code !== 'PGRST116') {
+          throw new InternalServerErrorException(
+            'Error al buscar registro existente: ' + existingError.message,
+          );
+        }
+
+        if (!existingData) {
+          return {
+            status: false,
+            message: `No existe una programacion financiera para la fuente ${request.fuente_id} y meta ${request.meta_id}`,
+            error: 'Registro no encontrado',
+            data: [],
+          };
+        }
+
+        // Calcular el total del cuatrienio
+        const totalCuatrienio =
+          request.periodo_2024 +
+          request.periodo_2025 +
+          request.periodo_2026 +
+          request.periodo_2027;
+
+        // Actualizar el registro existente
+        const { data: updatedData, error: updateError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_financiera')
+            .update({
+              periodo_2024: request.periodo_2024,
+              periodo_2025: request.periodo_2025,
+              periodo_2026: request.periodo_2026,
+              periodo_2027: request.periodo_2027,
+              total_cuatrienio: totalCuatrienio,
+            })
+            .eq('id', existingData.id)
+            .select()
+            .single();
+
+        if (updateError) {
+          throw new InternalServerErrorException(
+            'Error al actualizar programacion financiera: ' + updateError.message,
+          );
+        }
+
+        resultData.push(updatedData);
+      }
+
+      return {
+        status: true,
+        message: 'Programaciones financieras POAI actualizadas exitosamente',
+        data: resultData,
+        error: null,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      return {
+        status: false,
+        message: 'Error al actualizar programaciones financieras POAI',
+        data: [],
+        error: error.message,
       };
     }
   }
@@ -255,30 +367,6 @@ export class ProgramacionFinancieraService {
           data: existingData,
         };
       }
-
-      // Verificar que no exista ya otra combinación fuente_id + meta_id (si cambió)
-      // if (existingData.fuente_id !== updateRequest.fuente_id || existingData.meta_id !== updateRequest.meta_id) {
-      //     const {data: duplicateCheck, error: duplicateError} = await this.supabaseService.clientAdmin
-      //     .from('programacion_financiera')
-      //     .select('id')
-      //     .eq('fuente_id', updateRequest.fuente_id)
-      //     .eq('meta_id', updateRequest.meta_id)
-      //     .neq('id', id)
-      //     .maybeSingle();
-      //     if (duplicateError && duplicateError.code !== 'PGRST116') {
-      //         throw new InternalServerErrorException(
-      //             'Error al verificar duplicados: ' + duplicateError.message,
-      //         );
-      //     }
-      //     if (duplicateCheck) {
-      //         return {
-      //             status: false,
-      //             message: `Ya existe una programación financiera para la fuente ${fuenteExists.nombre} y la meta ${metaExists.nombre}`,
-      //             error: 'Combinación duplicada',
-      //             data: [],
-      //         };
-      //     }
-      // }
 
       // Calcular el total del cuatrienio para la actualización
       const totalCuatrienio =

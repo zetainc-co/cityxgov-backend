@@ -154,7 +154,7 @@ export class FuentesFinanciacionService {
       //Verifica si hay cambios en la fuente de financiación
       if (
         existingData.nombre === updateRequest.nombre &&
-        existingData.descripcion === updateRequest.descripcion
+        existingData.marco_normativo === updateRequest.marco_normativo
       ) {
         return {
           status: false,
@@ -170,7 +170,7 @@ export class FuentesFinanciacionService {
           .from('fuentes_financiacion')
           .update({
             nombre: updateRequest.nombre,
-            descripcion: updateRequest.descripcion,
+            marco_normativo: updateRequest.marco_normativo,
             updated_at: new Date().toISOString(),
           })
           .eq('id', id)
@@ -246,30 +246,6 @@ export class FuentesFinanciacionService {
           status: false,
           message:
             'No se puede eliminar la fuente de financiación porque está siendo usada en programación financiera',
-          error: 'Fuente de financiación en uso',
-          data: [],
-        };
-      }
-
-      //Verifica si la fuente de financiación está siendo usada en programacion_fisica
-      const { data: programacionFisica, error: programacionFisicaError } =
-        await this.supabaseService.clientAdmin
-          .from('programacion_fisica')
-          .select('id')
-          .eq('fuente_id', id)
-          .limit(1);
-
-      if (programacionFisicaError) {
-        throw new InternalServerErrorException(
-          'Error al verificar uso de la fuente de financiación en programación física',
-        );
-      }
-
-      if (programacionFisica.length > 0) {
-        return {
-          status: false,
-          message:
-            'No se puede eliminar la fuente de financiación porque está siendo usada en programación física',
           error: 'Fuente de financiación en uso',
           data: [],
         };

@@ -1,99 +1,89 @@
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
-import {
-  ProgramacionFisicaRequest,
-  ProgramacionFisicaResponse,
-} from './dto/programacion_fisica.dto';
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
+import { ProgramacionFisicaRequest } from './dto/programacion_fisica.dto';
+
+export interface ProgramacionFisicaResponse {
+  status: boolean;
+  message: string;
+  data?: any;
+  error?: any;
+}
 
 @Injectable()
 export class ProgramacionFisicaService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(private readonly supabaseService: SupabaseService) {}
 
-  // Obtiene todas las programaciones físicas
   async findAll(): Promise<ProgramacionFisicaResponse> {
     try {
       const { data, error } = await this.supabaseService.clientAdmin
         .from('programacion_fisica')
-        .select('*');
+        .select('*')
+        .order('id', { ascending: true });
 
       if (error) {
         throw new InternalServerErrorException(
-          'Error al obtener programacion física: ' + error.message,
+          'Error al obtener programaciones físicas: ' + error.message,
         );
       }
 
       return {
         status: true,
-        message: 'Programacion física encontrada',
+        message: 'Programaciones físicas obtenidas exitosamente',
         data: data,
         error: null,
       };
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      if (error instanceof BadRequestException) throw error;
       return {
         status: false,
-        message: 'Error al obtener programacion física',
-        data: [],
+        message: 'Error al obtener programaciones físicas',
         error: error.message,
+        data: [],
       };
     }
   }
 
-  // Obtiene una programacion física por su id
   async findOne(id: number): Promise<ProgramacionFisicaResponse> {
     try {
       const { data, error } = await this.supabaseService.clientAdmin
         .from('programacion_fisica')
         .select('*')
         .eq('id', id)
-        .maybeSingle();
+        .single();
 
       if (error) {
+        if (error.code === 'PGRST116') {
+          return {
+            status: false,
+            message: 'Programación física no encontrada',
+            error: 'Registro no encontrado',
+            data: null,
+          };
+        }
         throw new InternalServerErrorException(
-          'Error al obtener programacion física: ' + error.message,
+          'Error al obtener programación física: ' + error.message,
         );
-      }
-
-      if (!data) {
-        return {
-          status: false,
-          message: `No existe una programacion física con el ID ${id}`,
-          error: 'ID no encontrado',
-          data: [],
-        };
       }
 
       return {
         status: true,
-        message: 'Programacion física encontrada',
+        message: 'Programación física obtenida exitosamente',
         data: data,
         error: null,
       };
     } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      if (error instanceof BadRequestException) throw error;
       return {
         status: false,
-        message: 'Error al obtener programacion física',
-        data: [],
+        message: 'Error al obtener programación física',
         error: error.message,
+        data: null,
       };
     }
   }
 
-  // Crea una nueva programacion física
-  async create(
-    createRequest: ProgramacionFisicaRequest,
-  ): Promise<ProgramacionFisicaResponse> {
+  async create(createRequest: ProgramacionFisicaRequest): Promise<ProgramacionFisicaResponse> {
     try {
-      // Verificar que la meta producto existe
       const { data: metaExists, error: metaError } =
         await this.supabaseService.clientAdmin
           .from('meta_producto')
@@ -110,100 +100,73 @@ export class ProgramacionFisicaService {
         };
       }
 
-      // Verificar que no exista ya una programación física para esta meta
-      const { data: existingRecord, error: checkError } =
+      const { data: existingData, error: existingError } =
         await this.supabaseService.clientAdmin
           .from('programacion_fisica')
           .select('id')
           .eq('meta_id', createRequest.meta_id)
           .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (existingError && existingError.code !== 'PGRST116') {
         throw new InternalServerErrorException(
-          'Error al verificar duplicados: ' + checkError.message,
+          'Error al verificar duplicados: ' + existingError.message,
         );
       }
 
-      if (existingRecord) {
+      if (existingData) {
         return {
           status: false,
-          message: `Ya existe una programación física para la meta ${metaExists.nombre}`,
-          error: 'Meta duplicada',
+          message: `Ya existe una programación física para la meta ${createRequest.meta_id}`,
+          error: 'Registro duplicado',
           data: [],
         };
       }
 
-      // Calcular el total del cuatrienio
       const totalCuatrienio =
         createRequest.periodo_2024 +
         createRequest.periodo_2025 +
         createRequest.periodo_2026 +
         createRequest.periodo_2027;
 
-      // Crear el registro con el total_cuatrienio calculado
-      const { data, error } = await this.supabaseService.clientAdmin
-        .from('programacion_fisica')
-        .insert({
-          ...createRequest,
-          total_cuatrienio: totalCuatrienio,
-        })
-        .select('*')
-        .single();
+      const { data: newData, error: insertError } =
+        await this.supabaseService.clientAdmin
+          .from('programacion_fisica')
+          .insert({
+            meta_id: createRequest.meta_id,
+            periodo_2024: createRequest.periodo_2024,
+            periodo_2025: createRequest.periodo_2025,
+            periodo_2026: createRequest.periodo_2026,
+            periodo_2027: createRequest.periodo_2027,
+            total_cuatrienio: totalCuatrienio,
+          })
+          .select()
+          .single();
 
-      if (error) {
+      if (insertError) {
         throw new InternalServerErrorException(
-          'Error al crear programacion física: ' + error.message,
+          'Error al crear programación física: ' + insertError.message,
         );
       }
 
       return {
         status: true,
-        message: 'Programacion física creada correctamente',
-        data: data,
+        message: 'Programación física creada exitosamente',
+        data: newData,
         error: null,
       };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-
       return {
         status: false,
-        message: 'Error al crear programacion física',
+        message: 'Error al crear programación física',
         error: error.message,
         data: [],
       };
     }
   }
 
-  // Actualiza una programacion física
-  async update(
-    id: number,
-    updateRequest: ProgramacionFisicaRequest,
-  ): Promise<ProgramacionFisicaResponse> {
+  async update(id: number, updateRequest: ProgramacionFisicaRequest): Promise<ProgramacionFisicaResponse> {
     try {
-      // Verificar que la programacion física existe
-      const { data: existingData, error: existingError } =
-        await this.supabaseService.clientAdmin
-          .from('programacion_fisica')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-
-      if (existingError) {
-        throw new InternalServerErrorException(
-          'Error al validar programacion física: ' + existingError.message,
-        );
-      }
-
-      if (!existingData) {
-        return {
-          status: false,
-          message: `No existe una programacion física con el ID ${id}`,
-          error: 'ID no encontrado',
-          data: [],
-        };
-      }
-
-      // Verificar que la meta producto existe
       const { data: metaExists, error: metaError } =
         await this.supabaseService.clientAdmin
           .from('meta_producto')
@@ -220,126 +183,194 @@ export class ProgramacionFisicaService {
         };
       }
 
-      // Calcular el total del cuatrienio para la comparación
-      const newTotalCuatrienio =
-        updateRequest.periodo_2024 +
-        updateRequest.periodo_2025 +
-        updateRequest.periodo_2026 +
-        updateRequest.periodo_2027;
+      const { data: existingData, error: existingError } =
+        await this.supabaseService.clientAdmin
+          .from('programacion_fisica')
+          .select('id')
+          .eq('id', id)
+          .single();
 
-      // Verificar si hay cambios
-      if (
-        existingData.meta_id === updateRequest.meta_id &&
-        existingData.periodo_2024 === updateRequest.periodo_2024 &&
-        existingData.periodo_2025 === updateRequest.periodo_2025 &&
-        existingData.periodo_2026 === updateRequest.periodo_2026 &&
-        existingData.periodo_2027 === updateRequest.periodo_2027 &&
-        existingData.total_cuatrienio === newTotalCuatrienio
-      ) {
-        return {
-          status: false,
-          message: 'No se detectaron cambios en la programacion física',
-          error: 'Sin Cambios',
-          data: existingData,
-        };
-      }
-
-      // Verificar que no exista ya otra programación física para esta meta (si cambió)
-      if (existingData.meta_id !== updateRequest.meta_id) {
-        const { data: duplicateCheck, error: duplicateError } =
-          await this.supabaseService.clientAdmin
-            .from('programacion_fisica')
-            .select('id')
-            .eq('meta_id', updateRequest.meta_id)
-            .neq('id', id)
-            .maybeSingle();
-
-        if (duplicateError && duplicateError.code !== 'PGRST116') {
-          throw new InternalServerErrorException(
-            'Error al verificar duplicados: ' + duplicateError.message,
-          );
-        }
-
-        if (duplicateCheck) {
+      if (existingError) {
+        if (existingError.code === 'PGRST116') {
           return {
             status: false,
-            message: `Ya existe una programación física para la meta ${metaExists.nombre}`,
-            error: 'Meta duplicada',
+            message: 'Programación física no encontrada',
+            error: 'Registro no encontrado',
             data: [],
           };
         }
+        throw new InternalServerErrorException(
+          'Error al verificar registro existente: ' + existingError.message,
+        );
       }
 
-      // Calcular el total del cuatrienio para la actualización
       const totalCuatrienio =
         updateRequest.periodo_2024 +
         updateRequest.periodo_2025 +
         updateRequest.periodo_2026 +
         updateRequest.periodo_2027;
 
-      // Actualizar el registro con el total_cuatrienio calculado
       const { data: updatedData, error: updateError } =
         await this.supabaseService.clientAdmin
           .from('programacion_fisica')
           .update({
-            ...updateRequest,
+            meta_id: updateRequest.meta_id,
+            periodo_2024: updateRequest.periodo_2024,
+            periodo_2025: updateRequest.periodo_2025,
+            periodo_2026: updateRequest.periodo_2026,
+            periodo_2027: updateRequest.periodo_2027,
             total_cuatrienio: totalCuatrienio,
           })
           .eq('id', id)
-          .select('*')
+          .select()
           .single();
 
       if (updateError) {
         throw new InternalServerErrorException(
-          'Error al actualizar programacion física: ' + updateError.message,
+          'Error al actualizar programación física: ' + updateError.message,
         );
       }
 
       return {
         status: true,
-        message: 'Programacion física actualizada correctamente',
+        message: 'Programación física actualizada exitosamente',
         data: updatedData,
         error: null,
       };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-
       return {
         status: false,
-        message: 'Error al actualizar programacion física',
+        message: 'Error al actualizar programación física',
         error: error.message,
         data: [],
       };
     }
   }
 
-  // Elimina una programacion física
+  // Actualiza múltiples programaciones físicas POAI
+  async updateMultiple(requests: ProgramacionFisicaRequest[]): Promise<ProgramacionFisicaResponse> {
+    console.log('🔍 Debug - Service updateMultiple() ejecutándose');
+    console.log('🔍 Debug - Service updateMultiple() requests recibidos:', JSON.stringify(requests, null, 2));
+    console.log('🔍 Debug - Service updateMultiple() tipo de requests:', typeof requests);
+    console.log('🔍 Debug - Service updateMultiple() es array:', Array.isArray(requests));
+    console.log('🔍 Debug - Service updateMultiple() cantidad de requests:', requests?.length || 0);
+
+    try {
+      const resultData: any[] = [];
+
+      for (const request of requests) {
+        // Verificar que la meta producto existe
+        const { data: metaExists, error: metaError } =
+          await this.supabaseService.clientAdmin
+            .from('meta_producto')
+            .select('id, nombre')
+            .eq('id', request.meta_id)
+            .single();
+
+        if (metaError || !metaExists) {
+          return {
+            status: false,
+            message: `No existe una meta producto con el ID ${request.meta_id}`,
+            error: 'Meta producto no encontrada',
+            data: [],
+          };
+        }
+
+        // Buscar el registro existente para esta meta
+        const { data: existingData, error: existingError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_fisica')
+            .select('*')
+            .eq('meta_id', request.meta_id)
+            .maybeSingle();
+
+        if (existingError && existingError.code !== 'PGRST116') {
+          throw new InternalServerErrorException(
+            'Error al buscar registro existente: ' + existingError.message,
+          );
+        }
+
+        if (!existingData) {
+          return {
+            status: false,
+            message: `No existe una programación física para la meta ${request.meta_id}. Debe crear primero la programación física en el Plan Indicativo.`,
+            error: 'Registro no encontrado',
+            data: [],
+          };
+        }
+
+        // Calcular el total del cuatrienio
+        const totalCuatrienio =
+          request.periodo_2024 +
+          request.periodo_2025 +
+          request.periodo_2026 +
+          request.periodo_2027;
+
+        // Actualizar el registro existente
+        const { data: updatedData, error: updateError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_fisica')
+            .update({
+              periodo_2024: request.periodo_2024,
+              periodo_2025: request.periodo_2025,
+              periodo_2026: request.periodo_2026,
+              periodo_2027: request.periodo_2027,
+              total_cuatrienio: totalCuatrienio,
+            })
+            .eq('id', existingData.id)
+            .select()
+            .single();
+
+        if (updateError) {
+          throw new InternalServerErrorException(
+            'Error al actualizar programación física: ' + updateError.message,
+          );
+        }
+
+        resultData.push(updatedData);
+      }
+
+      return {
+        status: true,
+        message: 'Programaciones físicas POAI actualizadas exitosamente',
+        data: resultData,
+        error: null,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      return {
+        status: false,
+        message: 'Error al actualizar programaciones físicas POAI',
+        error: error.message,
+        data: [],
+      };
+    }
+  }
+
   async delete(id: number): Promise<ProgramacionFisicaResponse> {
     try {
-      // Verificar que la programacion física existe
       const { data: existingData, error: existingError } =
         await this.supabaseService.clientAdmin
           .from('programacion_fisica')
-          .select('*')
+          .select('id')
           .eq('id', id)
-          .maybeSingle();
+          .single();
 
       if (existingError) {
+        if (existingError.code === 'PGRST116') {
+          return {
+            status: false,
+            message: 'Programación física no encontrada',
+            error: 'Registro no encontrado',
+            data: [],
+          };
+        }
         throw new InternalServerErrorException(
-          'Error al validar programacion física: ' + existingError.message,
+          'Error al verificar registro existente: ' + existingError.message,
         );
       }
 
-      if (!existingData) {
-        return {
-          status: false,
-          message: `No existe una programacion física con el ID ${id}`,
-          error: 'ID no encontrado',
-          data: [],
-        };
-      }
-
-      // Eliminar el registro
       const { error: deleteError } = await this.supabaseService.clientAdmin
         .from('programacion_fisica')
         .delete()
@@ -347,21 +378,21 @@ export class ProgramacionFisicaService {
 
       if (deleteError) {
         throw new InternalServerErrorException(
-          'Error al eliminar programacion física: ' + deleteError.message,
+          'Error al eliminar programación física: ' + deleteError.message,
         );
       }
 
       return {
         status: true,
-        message: `Programacion física ID ${id} ha sido eliminada correctamente`,
-        data: [],
+        message: 'Programación física eliminada exitosamente',
+        data: null,
+        error: null,
       };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
-
       return {
         status: false,
-        message: 'Error al eliminar programacion física',
+        message: 'Error al eliminar programación física',
         error: error.message,
         data: [],
       };

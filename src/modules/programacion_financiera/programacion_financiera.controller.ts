@@ -8,15 +8,15 @@ import {
   UseGuards,
   Controller,
 } from '@nestjs/common';
+import {
+  ValidateIdPipe,
+  CreateProgramacionFinancieraPipe,
+} from './pipes/programacion_financiera.pipe';
 import { RolesGuard } from '../rol/guard/roles.guard';
 import { Roles } from '../rol/decorator/roles.decorator';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { ProgramacionFinancieraRequest } from './dto/programacion_financiera.dto';
 import { ProgramacionFinancieraService } from './programacion_financiera.service';
-import {
-  CreateProgramacionFinancieraPipe,
-  ValidateIdPipe,
-} from './pipes/programacion_financiera.pipe';
 
 @Controller('programacion-financiera')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -49,7 +49,16 @@ export class ProgramacionFinancieraController {
     return this.programacionFinancieraService.create(createRequest);
   }
 
-  // Actualiza una programacion financiera
+  // Actualiza múltiples programaciones financieras POAI
+  @Patch('update-multiple')
+  @Roles('superadmin', 'admin')
+  async updateMultiple(
+    @Body() requests: ProgramacionFinancieraRequest[],
+  ) {
+    return this.programacionFinancieraService.updateMultiple(requests);
+  }
+
+  // Actualiza una programacion financiera Plan Indicativo
   @Patch(':id')
   @Roles('superadmin', 'admin')
   async update(

@@ -1,14 +1,14 @@
 export interface EnfoquePoblacional {
   id: number;
   nombre: string;
-  descripcion: string;
+  codigo_enfoque: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface EnfoquePoblacionalRequest {
   nombre: string;
-  descripcion: string;
+  codigo_enfoque: string;
 }
 
 export interface EnfoquePoblacionalResponse {

@@ -21,7 +21,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     return {
-      identificacion: payload.id,
+      id: payload.id, // ID real de la tabla usuarios
+      identificacion: payload.identificacion, // Número de identificación
       roles: payload.roles,
       area_modulos: payload.area_modulos || {},
     };
