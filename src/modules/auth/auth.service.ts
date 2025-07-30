@@ -110,7 +110,8 @@ export class AuthService {
 
     const token = jwt.sign(
       {
-        id: user.identificacion,
+        id: user.id, // ID real de la tabla usuarios
+        identificacion: user.identificacion, // Número de identificación
         roles,
         area_modulos: areaModulos,
       },

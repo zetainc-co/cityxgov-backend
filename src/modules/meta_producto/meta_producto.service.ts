@@ -12,7 +12,7 @@ import { SupabaseService } from 'src/config/supabase/supabase.service';
 
 @Injectable()
 export class MetaProductoService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(private supabaseService: SupabaseService) { }
 
   // Obtiene todos los meta_producto con sus relaciones
   async findAll(): Promise<MetaProductoResponse> {
@@ -110,7 +110,7 @@ export class MetaProductoService {
       if (metaResultadosError) {
         throw new InternalServerErrorException(
           'Error al obtener meta resultados relacionados: ' +
-            metaResultadosError.message,
+          metaResultadosError.message,
         );
       }
 
@@ -178,14 +178,12 @@ export class MetaProductoService {
             area_id: createRequest.area_id,
             ods_id: createRequest.ods_id,
             enfoque_poblacional_id: createRequest.enfoque_poblacional_id,
-            // codigo: createRequest.codigo.trim(),
             linea_base: createRequest.linea_base.trim(),
             instrumento_planeacion: createRequest.instrumento_planeacion.trim(),
             nombre: createRequest.nombre.trim(),
             meta_numerica: createRequest.meta_numerica.trim(),
             orientacion: createRequest.orientacion.trim(),
-            // sector: createRequest.sector.trim(),
-            total_cuatrienio: createRequest.total_cuatrienio.trim(),
+            enfoque_territorial: createRequest.enfoque_territorial.trim(),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -214,7 +212,7 @@ export class MetaProductoService {
       if (metaResultadosError) {
         throw new InternalServerErrorException(
           'Error al obtener meta resultados relacionados: ' +
-            metaResultadosError.message,
+          metaResultadosError.message,
         );
       }
 
@@ -310,7 +308,7 @@ export class MetaProductoService {
       if (currentMetaError) {
         throw new InternalServerErrorException(
           'Error al obtener meta_resultados actuales: ' +
-            currentMetaError.message,
+          currentMetaError.message,
         );
       }
 
@@ -322,20 +320,18 @@ export class MetaProductoService {
       // Verificar cambios en campos básicos
       const hasBasicChanges =
         existing.caracterizacion_mga_id !==
-          updateRequest.caracterizacion_mga_id ||
+        updateRequest.caracterizacion_mga_id ||
         existing.area_id !== updateRequest.area_id ||
         existing.ods_id !== updateRequest.ods_id ||
         existing.enfoque_poblacional_id !==
-          updateRequest.enfoque_poblacional_id ||
-        // existing.codigo !== updateRequest.codigo.trim() ||
+        updateRequest.enfoque_poblacional_id ||
         existing.linea_base !== updateRequest.linea_base.trim() ||
         existing.instrumento_planeacion !==
-          updateRequest.instrumento_planeacion.trim() ||
+        updateRequest.instrumento_planeacion.trim() ||
         existing.nombre !== updateRequest.nombre.trim() ||
         existing.meta_numerica !== updateRequest.meta_numerica.trim() ||
         existing.orientacion !== updateRequest.orientacion.trim() ||
-        // existing.sector !== updateRequest.sector.trim() ||
-        existing.total_cuatrienio !== updateRequest.total_cuatrienio.trim();
+        existing.enfoque_territorial !== updateRequest.enfoque_territorial.trim();
 
       // Verificar cambios en meta_resultado_ids
       const hasMetaResultadoChanges =
@@ -394,15 +390,13 @@ export class MetaProductoService {
               area_id: updateRequest.area_id,
               ods_id: updateRequest.ods_id,
               enfoque_poblacional_id: updateRequest.enfoque_poblacional_id,
-              // codigo: updateRequest.codigo.trim(),
               linea_base: updateRequest.linea_base.trim(),
               instrumento_planeacion:
                 updateRequest.instrumento_planeacion.trim(),
               nombre: updateRequest.nombre.trim(),
               meta_numerica: updateRequest.meta_numerica.trim(),
               orientacion: updateRequest.orientacion.trim(),
-              // sector: updateRequest.sector.trim(),
-              total_cuatrienio: updateRequest.total_cuatrienio.trim(),
+              enfoque_territorial: updateRequest.enfoque_territorial.trim(),
               updated_at: new Date().toISOString(),
             })
             .eq('id', id)
@@ -448,7 +442,7 @@ export class MetaProductoService {
       if (metaResultadosError) {
         throw new InternalServerErrorException(
           'Error al obtener meta resultados relacionados: ' +
-            metaResultadosError.message,
+          metaResultadosError.message,
         );
       }
 

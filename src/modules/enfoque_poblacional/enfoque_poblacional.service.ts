@@ -164,7 +164,7 @@ export class EnfoquePoblacionalService {
       //Verifica si hay cambios
       if (
         existingData.nombre === updateRequest.nombre &&
-        existingData.descripcion === updateRequest.descripcion
+        existingData.codigo_enfoque === updateRequest.codigo_enfoque
       ) {
         return {
           status: false,
@@ -180,7 +180,7 @@ export class EnfoquePoblacionalService {
           .from('enfoque_poblacional')
           .update({
             nombre: updateRequest.nombre,
-            descripcion: updateRequest.descripcion,
+            codigo_enfoque: updateRequest.codigo_enfoque,
             updated_at: new Date().toISOString(),
           })
           .eq('id', id)

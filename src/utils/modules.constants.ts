@@ -42,7 +42,11 @@ export const MODULOS_DISPONIBLES = [
     nombre: 'POAI',
     descripcion: 'Gestión del Plan Operativo Anual de Inversiones',
     submodulos: [
-      'plan-operativo',
+      'poai',
+      'banco-proyectos',
+      'topes-presupuestales',
+      'programacion-financiera-poai',
+      'programacion-fisica-poai',
     ],
   },
 ];
