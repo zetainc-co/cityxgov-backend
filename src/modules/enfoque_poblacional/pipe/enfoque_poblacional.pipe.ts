@@ -26,7 +26,7 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
       });
     }
 
-    const { nombre, descripcion } = value;
+    const { nombre, codigo_enfoque } = value;
 
     if (!nombre) {
       throw new BadRequestException({
@@ -36,10 +36,10 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
       });
     }
 
-    if (!descripcion) {
+    if (!codigo_enfoque) {
       throw new BadRequestException({
         status: false,
-        message: 'La descripción es requerida',
+        message: 'El código de enfoque es requerido',
         data: [],
       });
     }
@@ -52,23 +52,23 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
       });
     }
 
-    if (typeof descripcion !== 'string') {
+    if (typeof codigo_enfoque !== 'string') {
       throw new BadRequestException({
         status: false,
-        message: 'La descripción debe ser una cadena de texto',
+        message: 'El código de enfoque debe ser una cadena de texto',
         data: [],
       });
     }
 
-    this.validateRequiredFields(nombre, descripcion);
+    this.validateRequiredFields(nombre, codigo_enfoque);
 
     return {
       nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
+      codigo_enfoque: codigo_enfoque.trim(),
     };
   }
 
-  private validateRequiredFields(nombre: string, descripcion: string) {
+  private validateRequiredFields(nombre: string, codigo_enfoque: string) {
     // Validaciones para nombre
     if (nombre.trim() === '') {
       throw new BadRequestException({
@@ -94,27 +94,27 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
       });
     }
 
-    // Validaciones para descripción
-    if (descripcion.trim() === '') {
+    // Validaciones para código de enfoque
+    if (codigo_enfoque.trim() === '') {
       throw new BadRequestException({
         status: false,
-        message: 'La descripción no puede estar vacía',
+        message: 'El código de enfoque no puede estar vacío',
         data: [],
       });
     }
 
-    if (descripcion.length < 10) {
+    if (codigo_enfoque.length < 2) {
       throw new BadRequestException({
         status: false,
-        message: 'La descripción debe tener al menos 10 caracteres',
+        message: 'El código de enfoque debe tener al menos 2 caracteres',
         data: [],
       });
     }
 
-    if (descripcion.length > 500) {
+    if (codigo_enfoque.length > 20) {
       throw new BadRequestException({
         status: false,
-        message: 'La descripción no puede tener más de 500 caracteres',
+        message: 'El código de enfoque no puede tener más de 20 caracteres',
         data: [],
       });
     }

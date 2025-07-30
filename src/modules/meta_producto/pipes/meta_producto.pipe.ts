@@ -17,7 +17,6 @@ export class CreateMetaProductoPipe implements PipeTransform {
       });
     }
 
-    // Verificar que es un objeto válido y no un array
     if (typeof value !== 'object' || Array.isArray(value)) {
       throw new BadRequestException({
         status: false,
@@ -31,14 +30,12 @@ export class CreateMetaProductoPipe implements PipeTransform {
       area_id,
       ods_id,
       enfoque_poblacional_id,
-      // codigo,
       linea_base,
       instrumento_planeacion,
       nombre,
       meta_numerica,
       orientacion,
-      // sector,
-      total_cuatrienio,
+      enfoque_territorial,
       meta_resultado_ids,
     } = value;
 
@@ -56,14 +53,12 @@ export class CreateMetaProductoPipe implements PipeTransform {
       area_id: Number(area_id),
       ods_id: Number(ods_id),
       enfoque_poblacional_id: Number(enfoque_poblacional_id),
-      // codigo: codigo.trim(),
       linea_base: linea_base.trim(),
       instrumento_planeacion: instrumento_planeacion.trim(),
       nombre: nombre.trim(),
       meta_numerica: meta_numerica.trim(),
       orientacion: orientacion.trim(),
-      // sector: sector.trim(),
-      total_cuatrienio: total_cuatrienio.trim(),
+      enfoque_territorial: enfoque_territorial.trim(),
       meta_resultado_ids: meta_resultado_ids,
     };
   }
@@ -74,14 +69,12 @@ export class CreateMetaProductoPipe implements PipeTransform {
       'area_id',
       'ods_id',
       'enfoque_poblacional_id',
-      // 'codigo',
       'linea_base',
       'instrumento_planeacion',
       'nombre',
       'meta_numerica',
       'orientacion',
-      // 'sector',
-      'total_cuatrienio',
+      'enfoque_territorial',
       'meta_resultado_ids',
     ];
 
@@ -130,7 +123,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
       'nombre',
       'meta_numerica',
       'orientacion',
-      'total_cuatrienio',
+      'enfoque_territorial',
     ];
 
     stringFields.forEach((field) => {

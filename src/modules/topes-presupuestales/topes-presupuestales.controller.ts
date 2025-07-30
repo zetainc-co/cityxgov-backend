@@ -1,9 +1,18 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Patch } from '@nestjs/common';
-import { TopesPresupuestalesService } from './topes-presupuestales.service';
-import { TopesPresupuestalesRequest } from './dto/topes-presupuestales.dto';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import {
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UseGuards,
+  Controller,
+} from '@nestjs/common';
 import { RolesGuard } from '../rol/guard/roles.guard';
 import { Roles } from '../rol/decorator/roles.decorator';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { TopesPresupuestalesRequest } from './dto/topes-presupuestales.dto';
+import { TopesPresupuestalesService } from './topes-presupuestales.service';
 
 @Controller('topes-presupuestales')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,12 +33,14 @@ export class TopesPresupuestalesController {
     return await this.topesPresupuestalesService.findAll();
   }
 
+  //obtener un tope presupuestal por año
   @Get('ano/:año')
   @Roles('superadmin', 'admin')
   async findByAño(@Param('año') año: string) {
     return await this.topesPresupuestalesService.findByAño(+año);
   }
 
+  //obtener las fuentes con topes presupuestales por año
   @Get('fuentes/:año')
   @Roles('superadmin', 'admin')
   async getFuentesConTopes(@Param('año') año: string) {
@@ -59,6 +70,5 @@ export class TopesPresupuestalesController {
   async delete(@Param('id') id: string) {
     return await this.topesPresupuestalesService.delete(+id);
   }
-
 
 }

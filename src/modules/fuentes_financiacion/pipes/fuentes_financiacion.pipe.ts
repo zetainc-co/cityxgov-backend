@@ -29,8 +29,9 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
       });
     }
 
-    const { nombre, descripcion } = value;
+    const { nombre, marco_normativo } = value;
 
+    // Validar que nombre esté presente
     if (!nombre) {
       throw new BadRequestException({
         status: false,
@@ -39,14 +40,7 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
       });
     }
 
-    if (!descripcion) {
-      throw new BadRequestException({
-        status: false,
-        message: 'La descripción es requerida',
-        data: [],
-      });
-    }
-
+    // Validar que nombre sea string
     if (typeof nombre !== 'string') {
       throw new BadRequestException({
         status: false,
@@ -55,33 +49,8 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
       });
     }
 
-    if (typeof descripcion !== 'string') {
-      throw new BadRequestException({
-        status: false,
-        message: 'La descripción debe ser una cadena de texto',
-        data: [],
-      });
-    }
-
-    this.validateRequiredFields(nombre, descripcion);
-
-    return {
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
-    };
-  }
-
-  private validateRequiredFields(nombre: string, descripcion: string) {
-    // Validaciones para nombre
-    if (nombre.trim() === '') {
-      throw new BadRequestException({
-        status: false,
-        message: 'El nombre no puede estar vacío',
-        data: [],
-      });
-    }
-
-    if (nombre.length < 3) {
+    // Validar longitud del nombre
+    if (nombre.trim().length < 3) {
       throw new BadRequestException({
         status: false,
         message: 'El nombre debe tener al menos 3 caracteres',
@@ -89,7 +58,7 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
       });
     }
 
-    if (nombre.length > 100) {
+    if (nombre.trim().length > 100) {
       throw new BadRequestException({
         status: false,
         message: 'El nombre no puede tener más de 100 caracteres',
@@ -97,30 +66,29 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
       });
     }
 
-    // Validaciones para descripción
-    if (descripcion.trim() === '') {
-      throw new BadRequestException({
-        status: false,
-        message: 'La descripción no puede estar vacía',
-        data: [],
-      });
+    // Validar marco_normativo si está presente
+    if (marco_normativo !== undefined && marco_normativo !== null) {
+      if (typeof marco_normativo !== 'string') {
+        throw new BadRequestException({
+          status: false,
+          message: 'El marco normativo debe ser una cadena de texto',
+          data: [],
+        });
+      }
+
+      if (marco_normativo.trim().length > 500) {
+        throw new BadRequestException({
+          status: false,
+          message: 'El marco normativo no puede tener más de 500 caracteres',
+          data: [],
+        });
+      }
     }
 
-    if (descripcion.length < 10) {
-      throw new BadRequestException({
-        status: false,
-        message: 'La descripción debe tener al menos 10 caracteres',
-        data: [],
-      });
-    }
-
-    if (descripcion.length > 500) {
-      throw new BadRequestException({
-        status: false,
-        message: 'La descripción no puede tener más de 500 caracteres',
-        data: [],
-      });
-    }
+    return {
+      nombre: nombre.trim(),
+      marco_normativo: marco_normativo?.trim() || undefined,
+    };
   }
 }
 

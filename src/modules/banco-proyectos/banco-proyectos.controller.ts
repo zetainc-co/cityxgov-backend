@@ -7,6 +7,7 @@ import {
   Delete,
   Controller,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { RolesGuard } from '../rol/guard/roles.guard';
 import { Roles } from '../rol/decorator/roles.decorator';
@@ -19,42 +20,43 @@ import { BancoProyectosRequest } from './dto/banco-proyectos.dto';
 export class BancoProyectosController {
   constructor(private readonly bancoProyectosService: BancoProyectosService) { }
 
-  //crear banco de proyectos
+  // Crear banco de proyectos
   @Post()
   @Roles('superadmin', 'admin')
   async create(@Body() createRequest: BancoProyectosRequest) {
     return await this.bancoProyectosService.create(createRequest);
   }
 
-  //obtener todos los bancos de proyectos
+  // Obtener todos los bancos de proyectos (con filtro opcional por año)
   @Get()
   @Roles('superadmin', 'admin')
-  async findAll() {
-    return await this.bancoProyectosService.findAll();
+  async findAll(@Query('año') año?: string) {
+    const añoNumber = año ? +año : undefined;
+    return await this.bancoProyectosService.findAll(añoNumber);
   }
 
-  //obtener todos los bancos de proyectos con relaciones
-  @Get('with-relations')
+  // Obtener proyectos por año específico
+  @Get('year/:año')
   @Roles('superadmin', 'admin')
-  async findAllWithRelations() {
-    return await this.bancoProyectosService.findAllWithRelations();
+  async findByYear(@Param('año') año: string) {
+    return await this.bancoProyectosService.findByYear(+año);
   }
 
-  //obtener un banco de proyectos por id
+  // Obtener proyectos por año específico con relaciones
+  @Get('year/:año/with-relations')
+  @Roles('superadmin', 'admin')
+  async findByYearWithRelations(@Param('año') año: string) {
+    return await this.bancoProyectosService.findByYearWithRelations(+año);
+  }
+
+  // Obtener un banco de proyectos por id
   @Get(':id')
   @Roles('superadmin', 'admin')
   async findOne(@Param('id') id: string) {
     return await this.bancoProyectosService.findOne(+id);
   }
 
-  //obtener un banco de proyectos con sus relaciones
-  @Get(':id/relations')
-  @Roles('superadmin', 'admin')
-  async findOneWithRelations(@Param('id') id: string) {
-    return await this.bancoProyectosService.findOneWithRelations(+id);
-  }
-
-  //actualizar un banco de proyectos
+  // Actualizar un banco de proyectos
   @Patch(':id')
   @Roles('superadmin', 'admin')
   async update(
@@ -64,7 +66,7 @@ export class BancoProyectosController {
     return await this.bancoProyectosService.update(+id, updateRequest);
   }
 
-  //eliminar un banco de proyectos
+  // Eliminar un banco de proyectos
   @Delete(':id')
   @Roles('superadmin', 'admin')
   async delete(@Param('id') id: string) {
