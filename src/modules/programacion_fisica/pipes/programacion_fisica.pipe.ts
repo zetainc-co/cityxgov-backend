@@ -26,7 +26,7 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
       });
     }
 
-    const { meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } =
+    const { meta_id, periodo_uno, periodo_dos, periodo_tres, periodo_cuatro } =
       value;
 
     // Validaciones de campos requeridos
@@ -49,10 +49,10 @@ export class CreateProgramacionFisicaPipe implements PipeTransform {
 
     // Validar y limpiar valores de períodos (usando valores por defecto si no están presentes)
     const periodos = {
-      periodo_2024: this.validatePeriodoValue(periodo_2024 ?? null, '2024'),
-      periodo_2025: this.validatePeriodoValue(periodo_2025 ?? null, '2025'),
-      periodo_2026: this.validatePeriodoValue(periodo_2026 ?? null, '2026'),
-      periodo_2027: this.validatePeriodoValue(periodo_2027 ?? null, '2027'),
+      periodo_uno: this.validatePeriodoValue(periodo_uno ?? null, 'uno'),
+      periodo_dos: this.validatePeriodoValue(periodo_dos ?? null, 'dos'),
+      periodo_tres: this.validatePeriodoValue(periodo_tres ?? null, 'tres'),
+      periodo_cuatro: this.validatePeriodoValue(periodo_cuatro ?? null, 'cuatro'),
     };
 
     return {
@@ -150,7 +150,7 @@ export class UpdateMultipleProgramacionFisicaPipe implements PipeTransform {
         });
       }
 
-      const { meta_id, periodo_2024, periodo_2025, periodo_2026, periodo_2027 } = item;
+      const { meta_id, periodo_uno, periodo_dos, periodo_tres, periodo_cuatro } = item;
 
       // Validaciones de campos requeridos
       if (meta_id === undefined || meta_id === null) {
@@ -172,10 +172,10 @@ export class UpdateMultipleProgramacionFisicaPipe implements PipeTransform {
 
       // Validar y limpiar valores de períodos
       const periodos = {
-        periodo_2024: this.validatePeriodoValue(periodo_2024 ?? null, '2024', index + 1),
-        periodo_2025: this.validatePeriodoValue(periodo_2025 ?? null, '2025', index + 1),
-        periodo_2026: this.validatePeriodoValue(periodo_2026 ?? null, '2026', index + 1),
-        periodo_2027: this.validatePeriodoValue(periodo_2027 ?? null, '2027', index + 1),
+        periodo_uno: this.validatePeriodoValue(periodo_uno ?? null, 'uno', index + 1),
+        periodo_dos: this.validatePeriodoValue(periodo_dos ?? null, 'dos', index + 1),
+        periodo_tres: this.validatePeriodoValue(periodo_tres ?? null, 'tres', index + 1),
+        periodo_cuatro: this.validatePeriodoValue(periodo_cuatro ?? null, 'cuatro', index + 1),
       };
 
       return {

@@ -125,12 +125,35 @@ export class ProgramacionFinancieraService {
         };
       }
 
+      // Verificar que no existe una programación financiera con la misma fuente y meta
+      const { data: existingData, error: existingError } = await this.supabaseService.clientAdmin
+          .from('programacion_financiera')
+          .select('id, fuente_id, meta_id')
+          .eq('fuente_id', createRequest.fuente_id)
+          .eq('meta_id', createRequest.meta_id)
+          .maybeSingle();
+
+      if (existingError && existingError.code !== 'PGRST116') {
+        throw new InternalServerErrorException(
+          'Error al verificar duplicados: ' + existingError.message,
+        );
+      }
+
+      if (existingData) {
+        return {
+          status: false,
+          message: `Ya existe una programación financiera para la fuente ${createRequest.fuente_id} y meta ${createRequest.meta_id}. Use la función de actualización en su lugar.`,
+          error: 'Registro duplicado',
+          data: [],
+        };
+      }
+
       // Calcular el total del cuatrienio
       const totalCuatrienio =
-        createRequest.periodo_2024 +
-        createRequest.periodo_2025 +
-        createRequest.periodo_2026 +
-        createRequest.periodo_2027;
+        createRequest.periodo_uno +
+        createRequest.periodo_dos +
+        createRequest.periodo_tres +
+        createRequest.periodo_cuatro;
 
       // Crear el registro con el total_cuatrienio calculado
       const { data, error } = await this.supabaseService.clientAdmin
@@ -206,22 +229,22 @@ export class ProgramacionFinancieraService {
           };
         }
 
-        // Buscar el registro existente para esta fuente + meta
-        const { data: existingData, error: existingError } =
+                        // Buscar el registro existente para esta fuente + meta
+        const { data: existingDataArray, error: existingError } =
           await this.supabaseService.clientAdmin
             .from('programacion_financiera')
             .select('*')
             .eq('fuente_id', request.fuente_id)
             .eq('meta_id', request.meta_id)
-            .maybeSingle();
+            .order('id', { ascending: false });
 
-        if (existingError && existingError.code !== 'PGRST116') {
+        if (existingError) {
           throw new InternalServerErrorException(
             'Error al buscar registro existente: ' + existingError.message,
           );
         }
 
-        if (!existingData) {
+        if (!existingDataArray || existingDataArray.length === 0) {
           return {
             status: false,
             message: `No existe una programacion financiera para la fuente ${request.fuente_id} y meta ${request.meta_id}`,
@@ -230,22 +253,25 @@ export class ProgramacionFinancieraService {
           };
         }
 
+        // Si hay múltiples registros, usar el más reciente (primero del array ordenado)
+        const existingData = existingDataArray[0];
+
         // Calcular el total del cuatrienio
         const totalCuatrienio =
-          request.periodo_2024 +
-          request.periodo_2025 +
-          request.periodo_2026 +
-          request.periodo_2027;
+          request.periodo_uno +
+          request.periodo_dos +
+          request.periodo_tres +
+          request.periodo_cuatro;
 
         // Actualizar el registro existente
         const { data: updatedData, error: updateError } =
           await this.supabaseService.clientAdmin
             .from('programacion_financiera')
             .update({
-              periodo_2024: request.periodo_2024,
-              periodo_2025: request.periodo_2025,
-              periodo_2026: request.periodo_2026,
-              periodo_2027: request.periodo_2027,
+              periodo_uno: request.periodo_uno,
+              periodo_dos: request.periodo_dos,
+              periodo_tres: request.periodo_tres,
+              periodo_cuatro: request.periodo_cuatro,
               total_cuatrienio: totalCuatrienio,
             })
             .eq('id', existingData.id)
@@ -343,37 +369,38 @@ export class ProgramacionFinancieraService {
         };
       }
 
-      // Calcular el total del cuatrienio para la comparación
-      const newTotalCuatrienio =
-        updateRequest.periodo_2024 +
-        updateRequest.periodo_2025 +
-        updateRequest.periodo_2026 +
-        updateRequest.periodo_2027;
+      // Si está cambiando la fuente o meta, verificar que no exista duplicado
+      if (existingData.fuente_id !== updateRequest.fuente_id || existingData.meta_id !== updateRequest.meta_id) {
+        const { data: duplicateData, error: duplicateError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_financiera')
+            .select('id')
+            .eq('fuente_id', updateRequest.fuente_id)
+            .eq('meta_id', updateRequest.meta_id)
+            .maybeSingle();
 
-      // Verificar si hay cambios
-      if (
-        existingData.fuente_id === updateRequest.fuente_id &&
-        existingData.meta_id === updateRequest.meta_id &&
-        existingData.periodo_2024 === updateRequest.periodo_2024 &&
-        existingData.periodo_2025 === updateRequest.periodo_2025 &&
-        existingData.periodo_2026 === updateRequest.periodo_2026 &&
-        existingData.periodo_2027 === updateRequest.periodo_2027 &&
-        existingData.total_cuatrienio === newTotalCuatrienio
-      ) {
-        return {
-          status: false,
-          message: 'No se detectaron cambios en la programacion financiera',
-          error: 'Sin Cambios',
-          data: existingData,
-        };
+        if (duplicateError && duplicateError.code !== 'PGRST116') {
+          throw new InternalServerErrorException(
+            'Error al verificar duplicados: ' + duplicateError.message,
+          );
+        }
+
+        if (duplicateData) {
+          return {
+            status: false,
+            message: `Ya existe una programación financiera para la fuente ${updateRequest.fuente_id} y meta ${updateRequest.meta_id}. No se puede cambiar a una combinación que ya existe.`,
+            error: 'Registro duplicado',
+            data: [],
+          };
+        }
       }
 
       // Calcular el total del cuatrienio para la actualización
       const totalCuatrienio =
-        updateRequest.periodo_2024 +
-        updateRequest.periodo_2025 +
-        updateRequest.periodo_2026 +
-        updateRequest.periodo_2027;
+        updateRequest.periodo_uno +
+        updateRequest.periodo_dos +
+        updateRequest.periodo_tres +
+        updateRequest.periodo_cuatro;
 
       // Actualizar el registro con el total_cuatrienio calculado
       const { data: updatedData, error: updateError } =
