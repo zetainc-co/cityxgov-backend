@@ -11,7 +11,7 @@ export interface ProgramacionFisicaResponse {
 
 @Injectable()
 export class ProgramacionFisicaService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(private readonly supabaseService: SupabaseService) { }
 
   async findAll(): Promise<ProgramacionFisicaResponse> {
     try {
@@ -123,20 +123,20 @@ export class ProgramacionFisicaService {
       }
 
       const totalCuatrienio =
-        createRequest.periodo_2024 +
-        createRequest.periodo_2025 +
-        createRequest.periodo_2026 +
-        createRequest.periodo_2027;
+        createRequest.periodo_uno +
+        createRequest.periodo_dos +
+        createRequest.periodo_tres +
+        createRequest.periodo_cuatro;
 
       const { data: newData, error: insertError } =
         await this.supabaseService.clientAdmin
           .from('programacion_fisica')
           .insert({
             meta_id: createRequest.meta_id,
-            periodo_2024: createRequest.periodo_2024,
-            periodo_2025: createRequest.periodo_2025,
-            periodo_2026: createRequest.periodo_2026,
-            periodo_2027: createRequest.periodo_2027,
+            periodo_uno: createRequest.periodo_uno,
+            periodo_dos: createRequest.periodo_dos,
+            periodo_tres: createRequest.periodo_tres,
+            periodo_cuatro: createRequest.periodo_cuatro,
             total_cuatrienio: totalCuatrienio,
           })
           .select()
@@ -186,7 +186,7 @@ export class ProgramacionFisicaService {
       const { data: existingData, error: existingError } =
         await this.supabaseService.clientAdmin
           .from('programacion_fisica')
-          .select('id')
+          .select('id, meta_id')
           .eq('id', id)
           .single();
 
@@ -204,21 +204,46 @@ export class ProgramacionFisicaService {
         );
       }
 
+      // Si está cambiando la meta, verificar que no exista duplicado
+      if (existingData.meta_id !== updateRequest.meta_id) {
+        const { data: duplicateData, error: duplicateError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_fisica')
+            .select('id')
+            .eq('meta_id', updateRequest.meta_id)
+            .maybeSingle();
+
+        if (duplicateError && duplicateError.code !== 'PGRST116') {
+          throw new InternalServerErrorException(
+            'Error al verificar duplicados: ' + duplicateError.message,
+          );
+        }
+
+        if (duplicateData) {
+          return {
+            status: false,
+            message: `Ya existe una programación física para la meta ${updateRequest.meta_id}.`,
+            error: 'Registro duplicado',
+            data: [],
+          };
+        }
+      }
+
       const totalCuatrienio =
-        updateRequest.periodo_2024 +
-        updateRequest.periodo_2025 +
-        updateRequest.periodo_2026 +
-        updateRequest.periodo_2027;
+        updateRequest.periodo_uno +
+        updateRequest.periodo_dos +
+        updateRequest.periodo_tres +
+        updateRequest.periodo_cuatro;
 
       const { data: updatedData, error: updateError } =
         await this.supabaseService.clientAdmin
           .from('programacion_fisica')
           .update({
             meta_id: updateRequest.meta_id,
-            periodo_2024: updateRequest.periodo_2024,
-            periodo_2025: updateRequest.periodo_2025,
-            periodo_2026: updateRequest.periodo_2026,
-            periodo_2027: updateRequest.periodo_2027,
+            periodo_uno: updateRequest.periodo_uno,
+            periodo_dos: updateRequest.periodo_dos,
+            periodo_tres: updateRequest.periodo_tres,
+            periodo_cuatro: updateRequest.periodo_cuatro,
             total_cuatrienio: totalCuatrienio,
           })
           .eq('id', id)
@@ -250,12 +275,6 @@ export class ProgramacionFisicaService {
 
   // Actualiza múltiples programaciones físicas POAI
   async updateMultiple(requests: ProgramacionFisicaRequest[]): Promise<ProgramacionFisicaResponse> {
-    console.log('🔍 Debug - Service updateMultiple() ejecutándose');
-    console.log('🔍 Debug - Service updateMultiple() requests recibidos:', JSON.stringify(requests, null, 2));
-    console.log('🔍 Debug - Service updateMultiple() tipo de requests:', typeof requests);
-    console.log('🔍 Debug - Service updateMultiple() es array:', Array.isArray(requests));
-    console.log('🔍 Debug - Service updateMultiple() cantidad de requests:', requests?.length || 0);
-
     try {
       const resultData: any[] = [];
 
@@ -302,20 +321,20 @@ export class ProgramacionFisicaService {
 
         // Calcular el total del cuatrienio
         const totalCuatrienio =
-          request.periodo_2024 +
-          request.periodo_2025 +
-          request.periodo_2026 +
-          request.periodo_2027;
+          request.periodo_uno +
+          request.periodo_dos +
+          request.periodo_tres +
+          request.periodo_cuatro;
 
         // Actualizar el registro existente
         const { data: updatedData, error: updateError } =
           await this.supabaseService.clientAdmin
             .from('programacion_fisica')
             .update({
-              periodo_2024: request.periodo_2024,
-              periodo_2025: request.periodo_2025,
-              periodo_2026: request.periodo_2026,
-              periodo_2027: request.periodo_2027,
+              periodo_uno: request.periodo_uno,
+              periodo_dos: request.periodo_dos,
+              periodo_tres: request.periodo_tres,
+              periodo_cuatro: request.periodo_cuatro,
               total_cuatrienio: totalCuatrienio,
             })
             .eq('id', existingData.id)
