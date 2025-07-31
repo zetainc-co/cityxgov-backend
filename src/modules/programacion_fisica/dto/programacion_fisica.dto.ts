@@ -1,21 +1,21 @@
 export interface ProgramacionFisica {
   id: number;
   meta_id: number;
-  periodo_2024: number; // INTEGER
-  periodo_2025: number; // INTEGER
-  periodo_2026: number; // INTEGER
-  periodo_2027: number; // INTEGER
-  total_cuatrienio: number; // INTEGER
+  periodo_uno: number;
+  periodo_dos: number;
+  periodo_tres: number;
+  periodo_cuatro: number;
+  total_cuatrienio: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface ProgramacionFisicaRequest {
   meta_id: number;
-  periodo_2024: number; // INTEGER
-  periodo_2025: number; // INTEGER
-  periodo_2026: number; // INTEGER
-  periodo_2027: number; // INTEGER
+  periodo_uno: number;
+  periodo_dos: number;
+  periodo_tres: number;
+  periodo_cuatro: number;
 }
 
 export interface ProgramacionFisicaResponse {

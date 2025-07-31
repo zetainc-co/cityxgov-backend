@@ -32,10 +32,10 @@ export class CreateProgramacionFinancieraPipe implements PipeTransform {
     const {
       fuente_id,
       meta_id,
-      periodo_2024,
-      periodo_2025,
-      periodo_2026,
-      periodo_2027,
+      periodo_uno,
+      periodo_dos,
+      periodo_tres,
+      periodo_cuatro,
     } = value;
 
     // Validaciones de campos requeridos
@@ -75,10 +75,10 @@ export class CreateProgramacionFinancieraPipe implements PipeTransform {
 
     // Validar y limpiar valores de períodos (usando valores por defecto si no están presentes)
     const periodos = {
-      periodo_2024: this.validatePeriodoValue(periodo_2024 ?? null, '2024'),
-      periodo_2025: this.validatePeriodoValue(periodo_2025 ?? null, '2025'),
-      periodo_2026: this.validatePeriodoValue(periodo_2026 ?? null, '2026'),
-      periodo_2027: this.validatePeriodoValue(periodo_2027 ?? null, '2027'),
+      periodo_uno: this.validatePeriodoValue(periodo_uno ?? null, 'uno'),
+      periodo_dos: this.validatePeriodoValue(periodo_dos ?? null, 'dos'),
+      periodo_tres: this.validatePeriodoValue(periodo_tres ?? null, 'tres'),
+      periodo_cuatro: this.validatePeriodoValue(periodo_cuatro ?? null, 'cuatro'),
     };
 
     return {
