@@ -50,7 +50,18 @@ export class ProgramacionFinancieraService {
     try {
       const { data, error } = await this.supabaseService.clientAdmin
         .from('programacion_financiera')
-        .select('*')
+        .select(`
+          *,
+          meta_producto(
+            id,
+            nombre,
+            descripcion
+          ),
+          fuentes_financiacion(
+            id,
+            nombre
+          )
+        `)
         .eq('id', id)
         .maybeSingle();
 
@@ -71,9 +82,8 @@ export class ProgramacionFinancieraService {
 
       return {
         status: true,
-        message: 'Programacion financiera encontrada',
+        message: 'Programacion financiera encontrada correctamente',
         data: data,
-        error: null,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -82,10 +92,68 @@ export class ProgramacionFinancieraService {
       return {
         status: false,
         message: 'Error al obtener programacion financiera',
-        data: [],
         error: error.message,
+        data: [],
       };
     }
+  }
+
+  // Obtiene programaciones financieras por periodo específico
+  async findByPeriodo(periodo: number): Promise<ProgramacionFinancieraResponse> {
+    try {
+      // Mapear el periodo a la columna correspondiente
+      const periodoColumn = `periodo_${this.getPeriodoColumn(periodo)}`;
+
+      const { data, error } = await this.supabaseService.clientAdmin
+        .from('programacion_financiera')
+        .select(`
+          *,
+          meta_producto(
+            id,
+            nombre,
+            descripcion
+          ),
+          fuentes_financiacion(
+            id,
+            nombre
+          )
+        `)
+        .gt(periodoColumn, 0) // Solo traer registros que tengan valor > 0 en ese periodo
+        .order('id', { ascending: true });
+
+      if (error) {
+        throw new InternalServerErrorException(
+          'Error al obtener programacion financiera por periodo: ' + error.message,
+        );
+      }
+
+      return {
+        status: true,
+        message: `Programaciones financieras del periodo ${periodo} encontradas correctamente`,
+        data: data || [],
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      return {
+        status: false,
+        message: 'Error al obtener programacion financiera por periodo',
+        error: error.message,
+        data: [],
+      };
+    }
+  }
+
+  // Método auxiliar para mapear periodo a columna
+  private getPeriodoColumn(periodo: number): string {
+    const mapeo = {
+      1: 'uno',
+      2: 'dos',
+      3: 'tres',
+      4: 'cuatro'
+    };
+    return mapeo[periodo] || 'uno';
   }
 
   // Crea una nueva programacion financiera
@@ -189,122 +257,122 @@ export class ProgramacionFinancieraService {
     }
   }
 
-  // Actualiza múltiples programaciones financieras POAI
-  async updateMultiple(requests: ProgramacionFinancieraRequest[]): Promise<ProgramacionFinancieraResponse> {
-    try {
-      const resultData: any[] = [];
+  // // Actualiza múltiples programaciones financieras POAI
+  // async updateMultiple(requests: ProgramacionFinancieraRequest[]): Promise<ProgramacionFinancieraResponse> {
+  //   try {
+  //     const resultData: any[] = [];
 
-      for (const request of requests) {
-        // Verificar que la fuente de financiación existe
-        const { data: fuenteExists, error: fuenteError } =
-          await this.supabaseService.clientAdmin
-            .from('fuentes_financiacion')
-            .select('id, nombre')
-            .eq('id', request.fuente_id)
-            .single();
+  //     for (const request of requests) {
+  //       // Verificar que la fuente de financiación existe
+  //       const { data: fuenteExists, error: fuenteError } =
+  //         await this.supabaseService.clientAdmin
+  //           .from('fuentes_financiacion')
+  //           .select('id, nombre')
+  //           .eq('id', request.fuente_id)
+  //           .single();
 
-        if (fuenteError || !fuenteExists) {
-          return {
-            status: false,
-            message: `No existe una fuente de financiación con el ID ${request.fuente_id}`,
-            error: 'Fuente de financiación no encontrada',
-            data: [],
-          };
-        }
+  //       if (fuenteError || !fuenteExists) {
+  //         return {
+  //           status: false,
+  //           message: `No existe una fuente de financiación con el ID ${request.fuente_id}`,
+  //           error: 'Fuente de financiación no encontrada',
+  //           data: [],
+  //         };
+  //       }
 
-        // Verificar que la meta producto existe
-        const { data: metaExists, error: metaError } =
-          await this.supabaseService.clientAdmin
-            .from('meta_producto')
-            .select('id, nombre')
-            .eq('id', request.meta_id)
-            .single();
+  //       // Verificar que la meta producto existe
+  //       const { data: metaExists, error: metaError } =
+  //         await this.supabaseService.clientAdmin
+  //           .from('meta_producto')
+  //           .select('id, nombre')
+  //           .eq('id', request.meta_id)
+  //           .single();
 
-        if (metaError || !metaExists) {
-          return {
-            status: false,
-            message: `No existe una meta producto con el ID ${request.meta_id}`,
-            error: 'Meta producto no encontrada',
-            data: [],
-          };
-        }
+  //       if (metaError || !metaExists) {
+  //         return {
+  //           status: false,
+  //           message: `No existe una meta producto con el ID ${request.meta_id}`,
+  //           error: 'Meta producto no encontrada',
+  //           data: [],
+  //         };
+  //       }
 
-                        // Buscar el registro existente para esta fuente + meta
-        const { data: existingDataArray, error: existingError } =
-          await this.supabaseService.clientAdmin
-            .from('programacion_financiera')
-            .select('*')
-            .eq('fuente_id', request.fuente_id)
-            .eq('meta_id', request.meta_id)
-            .order('id', { ascending: false });
+  //                       // Buscar el registro existente para esta fuente + meta
+  //       const { data: existingDataArray, error: existingError } =
+  //         await this.supabaseService.clientAdmin
+  //           .from('programacion_financiera')
+  //           .select('*')
+  //           .eq('fuente_id', request.fuente_id)
+  //           .eq('meta_id', request.meta_id)
+  //           .order('id', { ascending: false });
 
-        if (existingError) {
-          throw new InternalServerErrorException(
-            'Error al buscar registro existente: ' + existingError.message,
-          );
-        }
+  //       if (existingError) {
+  //         throw new InternalServerErrorException(
+  //           'Error al buscar registro existente: ' + existingError.message,
+  //         );
+  //       }
 
-        if (!existingDataArray || existingDataArray.length === 0) {
-          return {
-            status: false,
-            message: `No existe una programacion financiera para la fuente ${request.fuente_id} y meta ${request.meta_id}`,
-            error: 'Registro no encontrado',
-            data: [],
-          };
-        }
+  //       if (!existingDataArray || existingDataArray.length === 0) {
+  //         return {
+  //           status: false,
+  //           message: `No existe una programacion financiera para la fuente ${request.fuente_id} y meta ${request.meta_id}`,
+  //           error: 'Registro no encontrado',
+  //           data: [],
+  //         };
+  //       }
 
-        // Si hay múltiples registros, usar el más reciente (primero del array ordenado)
-        const existingData = existingDataArray[0];
+  //       // Si hay múltiples registros, usar el más reciente (primero del array ordenado)
+  //       const existingData = existingDataArray[0];
 
-        // Calcular el total del cuatrienio
-        const totalCuatrienio =
-          request.periodo_uno +
-          request.periodo_dos +
-          request.periodo_tres +
-          request.periodo_cuatro;
+  //       // Calcular el total del cuatrienio
+  //       const totalCuatrienio =
+  //         request.periodo_uno +
+  //         request.periodo_dos +
+  //         request.periodo_tres +
+  //         request.periodo_cuatro;
 
-        // Actualizar el registro existente
-        const { data: updatedData, error: updateError } =
-          await this.supabaseService.clientAdmin
-            .from('programacion_financiera')
-            .update({
-              periodo_uno: request.periodo_uno,
-              periodo_dos: request.periodo_dos,
-              periodo_tres: request.periodo_tres,
-              periodo_cuatro: request.periodo_cuatro,
-              total_cuatrienio: totalCuatrienio,
-            })
-            .eq('id', existingData.id)
-            .select()
-            .single();
+  //       // Actualizar el registro existente
+  //       const { data: updatedData, error: updateError } =
+  //         await this.supabaseService.clientAdmin
+  //           .from('programacion_financiera')
+  //           .update({
+  //             periodo_uno: request.periodo_uno,
+  //             periodo_dos: request.periodo_dos,
+  //             periodo_tres: request.periodo_tres,
+  //             periodo_cuatro: request.periodo_cuatro,
+  //             total_cuatrienio: totalCuatrienio,
+  //           })
+  //           .eq('id', existingData.id)
+  //           .select()
+  //           .single();
 
-        if (updateError) {
-          throw new InternalServerErrorException(
-            'Error al actualizar programacion financiera: ' + updateError.message,
-          );
-        }
+  //       if (updateError) {
+  //         throw new InternalServerErrorException(
+  //           'Error al actualizar programacion financiera: ' + updateError.message,
+  //         );
+  //       }
 
-        resultData.push(updatedData);
-      }
+  //       resultData.push(updatedData);
+  //     }
 
-      return {
-        status: true,
-        message: 'Programaciones financieras POAI actualizadas exitosamente',
-        data: resultData,
-        error: null,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      return {
-        status: false,
-        message: 'Error al actualizar programaciones financieras POAI',
-        data: [],
-        error: error.message,
-      };
-    }
-  }
+  //     return {
+  //       status: true,
+  //       message: 'Programaciones financieras POAI actualizadas exitosamente',
+  //       data: resultData,
+  //       error: null,
+  //     };
+  //   } catch (error) {
+  //     if (error instanceof BadRequestException) {
+  //       throw error;
+  //     }
+  //     return {
+  //       status: false,
+  //       message: 'Error al actualizar programaciones financieras POAI',
+  //       data: [],
+  //       error: error.message,
+  //     };
+  //   }
+  // }
 
   // Actualiza una programacion financiera
   async update(
@@ -434,6 +502,128 @@ export class ProgramacionFinancieraService {
         message: 'Error al actualizar programacion financiera',
         error: error.message,
         data: [],
+      };
+    }
+  }
+
+  // Actualiza solo un periodo específico para POAI (sin tocar otros periodos)
+  async updatePeriodo(periodo: number, requests: ProgramacionFinancieraRequest[]): Promise<ProgramacionFinancieraResponse> {
+    try {
+      const periodoColumn = `periodo_${this.getPeriodoColumn(periodo)}`;
+      const resultData: any[] = [];
+
+      for (const request of requests) {
+        // Verificar que la fuente de financiación existe
+        const { data: fuenteExists, error: fuenteError } =
+          await this.supabaseService.clientAdmin
+            .from('fuentes_financiacion')
+            .select('id, nombre')
+            .eq('id', request.fuente_id)
+            .single();
+
+        if (fuenteError || !fuenteExists) {
+          return {
+            status: false,
+            message: `No existe una fuente de financiación con el ID ${request.fuente_id}`,
+            error: 'Fuente de financiación no encontrada',
+            data: [],
+          };
+        }
+
+        // Verificar que la meta producto existe
+        const { data: metaExists, error: metaError } =
+          await this.supabaseService.clientAdmin
+            .from('meta_producto')
+            .select('id, nombre')
+            .eq('id', request.meta_id)
+            .single();
+
+        if (metaError || !metaExists) {
+          return {
+            status: false,
+            message: `No existe una meta producto con el ID ${request.meta_id}`,
+            error: 'Meta producto no encontrada',
+            data: [],
+          };
+        }
+
+        // Buscar el registro existente para esta fuente + meta
+        const { data: existingDataArray, error: existingError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_financiera')
+            .select('*')
+            .eq('fuente_id', request.fuente_id)
+            .eq('meta_id', request.meta_id)
+            .order('id', { ascending: false });
+
+        if (existingError) {
+          throw new InternalServerErrorException(
+            'Error al buscar registro existente: ' + existingError.message,
+          );
+        }
+
+        if (!existingDataArray || existingDataArray.length === 0) {
+          return {
+            status: false,
+            message: `No existe una programacion financiera para la fuente ${request.fuente_id} y meta ${request.meta_id}`,
+            error: 'Registro no encontrado',
+            data: [],
+          };
+        }
+
+        // Si hay múltiples registros, usar el más reciente
+        const existingData = existingDataArray[0];
+
+        // Obtener el valor del periodo que queremos actualizar
+        const valorPeriodo = request[periodoColumn] || 0;
+
+        // Crear objeto de actualización solo con el periodo específico
+        const updateData: any = {
+          [periodoColumn]: valorPeriodo
+        };
+
+        // Recalcular el total del cuatrienio usando los valores existentes + el nuevo valor
+        const totalCuatrienio =
+          (periodo === 1 ? valorPeriodo : existingData.periodo_uno) +
+          (periodo === 2 ? valorPeriodo : existingData.periodo_dos) +
+          (periodo === 3 ? valorPeriodo : existingData.periodo_tres) +
+          (periodo === 4 ? valorPeriodo : existingData.periodo_cuatro);
+
+        updateData.total_cuatrienio = totalCuatrienio;
+
+        // Actualizar solo el periodo específico
+        const { data: updatedData, error: updateError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_financiera')
+            .update(updateData)
+            .eq('id', existingData.id)
+            .select()
+            .single();
+
+        if (updateError) {
+          throw new InternalServerErrorException(
+            'Error al actualizar programacion financiera: ' + updateError.message,
+          );
+        }
+
+        resultData.push(updatedData);
+      }
+
+      return {
+        status: true,
+        message: `Programaciones financieras POAI del periodo ${periodo} actualizadas exitosamente`,
+        data: resultData,
+        error: null,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      return {
+        status: false,
+        message: 'Error al actualizar programaciones financieras POAI',
+        data: [],
+        error: error.message,
       };
     }
   }

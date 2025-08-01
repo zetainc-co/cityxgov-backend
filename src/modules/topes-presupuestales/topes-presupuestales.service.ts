@@ -14,43 +14,8 @@ import {
 export class TopesPresupuestalesService {
     constructor(private supabaseService: SupabaseService) { }
 
-    // Obtiene todos los topes presupuestales
-    async findAll(): Promise<TopesPresupuestalesResponse> {
-        try {
-            const { data, error } = await this.supabaseService.clientAdmin
-                .from('topes_presupuestales')
-                .select(`
-          *,
-          fuentes_financiacion(*)
-        `)
-                .order('año', { ascending: false });
-
-            if (error) {
-                throw new InternalServerErrorException(
-                    'Error al obtener topes presupuestales: ' + error.message,
-                );
-            }
-
-            return {
-                status: true,
-                message: 'Topes presupuestales encontrados correctamente',
-                data: data,
-            };
-        } catch (error) {
-            if (error instanceof BadRequestException) {
-                throw error;
-            }
-
-            return {
-                status: false,
-                message: 'Error al obtener topes presupuestales',
-                error: error.message,
-            };
-        }
-    }
-
-    // Obtiene topes por año
-    async findByAño(año: number): Promise<TopesPresupuestalesResponse> {
+    // Obtiene topes por periodo específico con relaciones
+    async findByPeriodo(periodo: number): Promise<TopesPresupuestalesResponse> {
         try {
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('topes_presupuestales')
@@ -58,7 +23,7 @@ export class TopesPresupuestalesService {
                     *,
                     fuentes_financiacion(*)
                 `)
-                .eq('año', año)
+                .eq('periodo', periodo)
                 .order('fuente_id', { ascending: true });
 
             if (error) {
@@ -69,8 +34,8 @@ export class TopesPresupuestalesService {
 
             return {
                 status: true,
-                message: 'Topes presupuestales encontrados correctamente',
-                data: data,
+                message: `Topes presupuestales del periodo ${periodo} encontrados correctamente`,
+                data: data || [],
             };
         } catch (error) {
             if (error instanceof BadRequestException) {
@@ -85,15 +50,15 @@ export class TopesPresupuestalesService {
         }
     }
 
-    // Obtiene un tope por su ID
+    // Obtiene un tope por su ID con relaciones
     async findOne(id: number): Promise<TopesPresupuestalesResponse> {
         try {
             const { data, error } = await this.supabaseService.clientAdmin
                 .from('topes_presupuestales')
                 .select(`
-          *,
-          fuentes_financiacion(*)
-        `)
+                    *,
+                    fuentes_financiacion(*)
+                `)
                 .eq('id', id)
                 .maybeSingle();
 
@@ -136,7 +101,7 @@ export class TopesPresupuestalesService {
             // Validar los datos antes de crear
             const validationResult = await this.validateTopePresupuestal(
                 createRequest.fuente_id,
-                createRequest.año,
+                createRequest.periodo,
                 createRequest.tope_maximo
             );
 
@@ -153,7 +118,7 @@ export class TopesPresupuestalesService {
                 if (error.code === '23505') {
                     return {
                         status: false,
-                        message: 'Ya existe un tope presupuestal para esta fuente y año',
+                        message: 'Ya existe un tope presupuestal para esta fuente y periodo',
                         error: 'Tope duplicado',
                         data: [],
                     };
@@ -187,7 +152,7 @@ export class TopesPresupuestalesService {
             // Validar los datos antes de actualizar
             const validationResult = await this.validateTopePresupuestal(
                 updateRequest.fuente_id,
-                updateRequest.año,
+                updateRequest.periodo,
                 updateRequest.tope_maximo,
                 id // Excluir el registro actual de la validación de duplicados
             );
@@ -268,79 +233,10 @@ export class TopesPresupuestalesService {
         }
     }
 
-
-
-    // Obtiene todas las fuentes de financiación con información de topes para un año específico
-    async getFuentesConTopes(año: number): Promise<TopesPresupuestalesResponse> {
-        try {
-            // Obtener todas las fuentes de financiación
-            const { data: fuentes, error: fuentesError } = await this.supabaseService.clientAdmin
-                .from('fuentes_financiacion')
-                .select('*')
-                .order('nombre', { ascending: true });
-
-            if (fuentesError) {
-                throw new InternalServerErrorException(
-                    'Error al obtener fuentes de financiación: ' + fuentesError.message,
-                );
-            }
-
-            // Obtener los topes existentes para el año especificado
-            const { data: topes, error: topesError } = await this.supabaseService.clientAdmin
-                .from('topes_presupuestales')
-                .select(`
-                    fuente_id,
-                    tope_maximo,
-                    descripcion
-                `)
-                .eq('año', año);
-
-            if (topesError) {
-                throw new InternalServerErrorException(
-                    'Error al obtener topes presupuestales: ' + topesError.message,
-                );
-            }
-
-            // Crear un mapa de topes por fuente_id para búsqueda rápida
-            const topesMap = new Map();
-            topes?.forEach(tope => {
-                topesMap.set(tope.fuente_id, tope);
-            });
-
-            // Combinar fuentes con información de topes
-            const fuentesConTopes = fuentes?.map(fuente => {
-                const tope = topesMap.get(fuente.id);
-                return {
-                    ...fuente,
-                    tiene_tope: !!tope,
-                    tope_maximo: tope?.tope_maximo || null,
-                    tope_descripcion: tope?.descripcion || null,
-                    tope_id: tope ? tope.fuente_id : null
-                };
-            });
-
-            return {
-                status: true,
-                message: `Fuentes de financiación para el año ${año}`,
-                data: fuentesConTopes,
-            };
-        } catch (error) {
-            if (error instanceof BadRequestException) {
-                throw error;
-            }
-
-            return {
-                status: false,
-                message: 'Error al obtener fuentes con topes',
-                error: error.message,
-            };
-        }
-    }
-
     // Valida los datos antes de crear o actualizar un tope presupuestal
     private async validateTopePresupuestal(
         fuenteId: number,
-        año: number,
+        periodo: number,
         topeMaximo: number,
         excludeId?: number
     ): Promise<TopesPresupuestalesResponse> {
@@ -377,12 +273,12 @@ export class TopesPresupuestalesService {
                 };
             }
 
-            // 3. Validar que no haya duplicados (misma fuente + mismo año)
+            // 3. Validar que no haya duplicados (misma fuente + mismo periodo)
             let query = this.supabaseService.clientAdmin
                 .from('topes_presupuestales')
                 .select('id')
                 .eq('fuente_id', fuenteId)
-                .eq('año', año);
+                .eq('periodo', periodo);
 
             // Si estamos actualizando, excluir el registro actual
             if (excludeId) {
@@ -400,7 +296,7 @@ export class TopesPresupuestalesService {
             if (existingTope) {
                 return {
                     status: false,
-                    message: 'Ya existe un tope presupuestal para esta fuente de financiación y año',
+                    message: 'Ya existe un tope presupuestal para esta fuente de financiación y periodo',
                     error: 'Tope duplicado',
                     data: [],
                 };

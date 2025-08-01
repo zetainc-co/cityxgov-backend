@@ -47,6 +47,7 @@ export const MODULOS_DISPONIBLES = [
       'topes-presupuestales',
       'programacion-financiera-poai',
       'programacion-fisica-poai',
+      'trazabilidad',
     ],
   },
 ];

@@ -1,7 +1,7 @@
 export interface TopesPresupuestales {
   id: number;
   fuente_id: number;
-  año: number;
+  periodo: number;
   tope_maximo: number;
   descripcion: string | null;
   created_at: string;
@@ -10,7 +10,7 @@ export interface TopesPresupuestales {
 
 export interface TopesPresupuestalesRequest {
   fuente_id: number;
-  año: number;
+  periodo: number;
   tope_maximo: number;
   descripcion?: string;
 }

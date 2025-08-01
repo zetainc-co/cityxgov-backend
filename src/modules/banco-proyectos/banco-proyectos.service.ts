@@ -14,79 +14,8 @@ import { SupabaseService } from '../../config/supabase/supabase.service';
 export class BancoProyectosService {
   constructor(private supabaseService: SupabaseService) { }
 
-  // Obtiene todos los proyectos
-  async findAll(año?: number): Promise<BancoProyectosResponse> {
-    try {
-      let query = this.supabaseService.clientAdmin
-        .from('banco_proyectos')
-        .select('*');
-
-      // Si se proporciona un año, filtrar por ese año
-      if (año) {
-        query = query.eq('año', año);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) {
-        throw new InternalServerErrorException(
-          'Error al obtener proyectos: ' + error.message,
-        );
-      }
-
-      return {
-        status: true,
-        message: 'Proyectos encontrados correctamente',
-        data: data,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      return {
-        status: false,
-        message: 'Error al obtener proyectos',
-        error: error.message,
-      };
-    }
-  }
-
-  // Obtiene proyectos por año específico
-  async findByYear(año: number): Promise<BancoProyectosResponse> {
-    try {
-      const { data, error } = await this.supabaseService.clientAdmin
-        .from('banco_proyectos')
-        .select('*')
-        .eq('año', año)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw new InternalServerErrorException(
-          'Error al obtener proyectos por año: ' + error.message,
-        );
-      }
-
-      return {
-        status: true,
-        message: `Proyectos del año ${año} encontrados correctamente`,
-        data: data,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      return {
-        status: false,
-        message: 'Error al obtener proyectos por año',
-        error: error.message,
-      };
-    }
-  }
-
-  // Obtiene proyectos por año específico con relaciones
-  async findByYearWithRelations(año: number): Promise<BancoProyectosResponse> {
+  // Obtiene proyectos por periodo específico con relaciones
+  async findByPeriodoWithRelations(periodo: number): Promise<BancoProyectosResponse> {
     try {
       const { data, error } = await this.supabaseService.clientAdmin
         .from('banco_proyectos')
@@ -100,18 +29,18 @@ export class BancoProyectosService {
             )
           )
         `)
-        .eq('año', año)
+        .eq('periodo', periodo)
         .order('created_at', { ascending: false });
 
       if (error) {
         throw new InternalServerErrorException(
-          'Error al obtener proyectos por año: ' + error.message,
+          'Error al obtener proyectos por periodo: ' + error.message,
         );
       }
 
       return {
         status: true,
-        message: `Proyectos del año ${año} encontrados correctamente`,
+        message: `Proyectos del periodo ${periodo} encontrados correctamente`,
         data: data,
       };
     } catch (error) {
@@ -121,18 +50,27 @@ export class BancoProyectosService {
 
       return {
         status: false,
-        message: 'Error al obtener proyectos por año',
+        message: 'Error al obtener proyectos por periodo',
         error: error.message,
       };
     }
   }
 
-  // Obtiene un proyecto por su ID
+  // Obtiene un proyecto por su ID con todas sus relaciones
   async findOne(id: number): Promise<BancoProyectosResponse> {
     try {
       const { data, error } = await this.supabaseService.clientAdmin
         .from('banco_proyectos')
-        .select('*')
+        .select(`
+          *,
+          proyecto_metas(
+            meta_producto_id,
+            meta_producto(
+              *,
+              caracterizacion_mga(*)
+            )
+          )
+        `)
         .eq('id', id)
         .maybeSingle();
 
@@ -187,7 +125,7 @@ export class BancoProyectosService {
           codigo_bpin: createRequest.codigo_bpin,
           nombre: createRequest.nombre,
           descripcion: createRequest.descripcion,
-          año: createRequest.año
+          periodo: createRequest.periodo
         })
         .select()
         .single();
@@ -275,7 +213,7 @@ export class BancoProyectosService {
           nombre: updateRequest.nombre,
           codigo_bpin: updateRequest.codigo_bpin,
           descripcion: updateRequest.descripcion,
-          año: updateRequest.año,
+          periodo: updateRequest.periodo,
         })
         .eq('id', id)
         .select()
@@ -463,6 +401,46 @@ export class BancoProyectosService {
       return {
         status: false,
         message: 'Error al validar código MGA',
+        error: error.message,
+      };
+    }
+  }
+
+  // MÉTODO TEMPORAL: Verificar si el campo se llama año
+  async findByPeriodoTemp(periodo: number): Promise<BancoProyectosResponse> {
+    try {
+      // Intentar con campo 'periodo'
+      let { data, error } = await this.supabaseService.clientAdmin
+        .from('banco_proyectos')
+        .select('*')
+        .eq('periodo', periodo);
+
+      // Si no hay datos, intentar con campo 'año'
+      if (!data || data.length === 0) {
+        const result = await this.supabaseService.clientAdmin
+          .from('banco_proyectos')
+          .select('*')
+          .eq('año', periodo);
+
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        throw new InternalServerErrorException(
+          'Error al obtener proyectos por periodo: ' + error.message,
+        );
+      }
+
+      return {
+        status: true,
+        message: `Proyectos del periodo ${periodo} encontrados correctamente`,
+        data: data || [],
+      };
+    } catch (error) {
+      return {
+        status: false,
+        message: 'Error al obtener proyectos por periodo',
         error: error.message,
       };
     }

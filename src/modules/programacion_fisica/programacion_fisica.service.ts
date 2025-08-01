@@ -43,6 +43,61 @@ export class ProgramacionFisicaService {
     }
   }
 
+  async findByPeriodo(periodo: number): Promise<ProgramacionFisicaResponse> {
+    try {
+      // Determinar qué columna de periodo usar
+      let periodoColumn: string;
+      switch (periodo) {
+        case 1:
+          periodoColumn = 'periodo_uno';
+          break;
+        case 2:
+          periodoColumn = 'periodo_dos';
+          break;
+        case 3:
+          periodoColumn = 'periodo_tres';
+          break;
+        case 4:
+          periodoColumn = 'periodo_cuatro';
+          break;
+        default:
+          return {
+            status: false,
+            message: `Periodo ${periodo} no válido`,
+            error: 'Periodo inválido',
+            data: [],
+          };
+      }
+
+      const { data, error } = await this.supabaseService.clientAdmin
+        .from('programacion_fisica')
+        .select('*')
+        .gt(periodoColumn, 0)
+        .order('id', { ascending: true });
+
+      if (error) {
+        throw new InternalServerErrorException(
+          'Error al obtener programaciones físicas por periodo: ' + error.message,
+        );
+      }
+
+      return {
+        status: true,
+        message: `Programaciones físicas del periodo ${periodo} obtenidas exitosamente`,
+        data: data,
+        error: null,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      return {
+        status: false,
+        message: 'Error al obtener programaciones físicas por periodo',
+        error: error.message,
+        data: [],
+      };
+    }
+  }
+
   async findOne(id: number): Promise<ProgramacionFisicaResponse> {
     try {
       const { data, error } = await this.supabaseService.clientAdmin
@@ -273,99 +328,99 @@ export class ProgramacionFisicaService {
     }
   }
 
-  // Actualiza múltiples programaciones físicas POAI
-  async updateMultiple(requests: ProgramacionFisicaRequest[]): Promise<ProgramacionFisicaResponse> {
-    try {
-      const resultData: any[] = [];
+  // // Actualiza múltiples programaciones físicas POAI
+  // async updateMultiple(requests: ProgramacionFisicaRequest[]): Promise<ProgramacionFisicaResponse> {
+  //   try {
+  //     const resultData: any[] = [];
 
-      for (const request of requests) {
-        // Verificar que la meta producto existe
-        const { data: metaExists, error: metaError } =
-          await this.supabaseService.clientAdmin
-            .from('meta_producto')
-            .select('id, nombre')
-            .eq('id', request.meta_id)
-            .single();
+  //     for (const request of requests) {
+  //       // Verificar que la meta producto existe
+  //       const { data: metaExists, error: metaError } =
+  //         await this.supabaseService.clientAdmin
+  //           .from('meta_producto')
+  //           .select('id, nombre')
+  //           .eq('id', request.meta_id)
+  //           .single();
 
-        if (metaError || !metaExists) {
-          return {
-            status: false,
-            message: `No existe una meta producto con el ID ${request.meta_id}`,
-            error: 'Meta producto no encontrada',
-            data: [],
-          };
-        }
+  //       if (metaError || !metaExists) {
+  //         return {
+  //           status: false,
+  //           message: `No existe una meta producto con el ID ${request.meta_id}`,
+  //           error: 'Meta producto no encontrada',
+  //           data: [],
+  //         };
+  //       }
 
-        // Buscar el registro existente para esta meta
-        const { data: existingData, error: existingError } =
-          await this.supabaseService.clientAdmin
-            .from('programacion_fisica')
-            .select('*')
-            .eq('meta_id', request.meta_id)
-            .maybeSingle();
+  //       // Buscar el registro existente para esta meta
+  //       const { data: existingData, error: existingError } =
+  //         await this.supabaseService.clientAdmin
+  //           .from('programacion_fisica')
+  //           .select('*')
+  //           .eq('meta_id', request.meta_id)
+  //           .maybeSingle();
 
-        if (existingError && existingError.code !== 'PGRST116') {
-          throw new InternalServerErrorException(
-            'Error al buscar registro existente: ' + existingError.message,
-          );
-        }
+  //       if (existingError && existingError.code !== 'PGRST116') {
+  //         throw new InternalServerErrorException(
+  //           'Error al buscar registro existente: ' + existingError.message,
+  //         );
+  //       }
 
-        if (!existingData) {
-          return {
-            status: false,
-            message: `No existe una programación física para la meta ${request.meta_id}. Debe crear primero la programación física en el Plan Indicativo.`,
-            error: 'Registro no encontrado',
-            data: [],
-          };
-        }
+  //       if (!existingData) {
+  //         return {
+  //           status: false,
+  //           message: `No existe una programación física para la meta ${request.meta_id}. Debe crear primero la programación física en el Plan Indicativo.`,
+  //           error: 'Registro no encontrado',
+  //           data: [],
+  //         };
+  //       }
 
-        // Calcular el total del cuatrienio
-        const totalCuatrienio =
-          request.periodo_uno +
-          request.periodo_dos +
-          request.periodo_tres +
-          request.periodo_cuatro;
+  //       // Calcular el total del cuatrienio
+  //       const totalCuatrienio =
+  //         request.periodo_uno +
+  //         request.periodo_dos +
+  //         request.periodo_tres +
+  //         request.periodo_cuatro;
 
-        // Actualizar el registro existente
-        const { data: updatedData, error: updateError } =
-          await this.supabaseService.clientAdmin
-            .from('programacion_fisica')
-            .update({
-              periodo_uno: request.periodo_uno,
-              periodo_dos: request.periodo_dos,
-              periodo_tres: request.periodo_tres,
-              periodo_cuatro: request.periodo_cuatro,
-              total_cuatrienio: totalCuatrienio,
-            })
-            .eq('id', existingData.id)
-            .select()
-            .single();
+  //       // Actualizar el registro existente
+  //       const { data: updatedData, error: updateError } =
+  //         await this.supabaseService.clientAdmin
+  //           .from('programacion_fisica')
+  //           .update({
+  //             periodo_uno: request.periodo_uno,
+  //             periodo_dos: request.periodo_dos,
+  //             periodo_tres: request.periodo_tres,
+  //             periodo_cuatro: request.periodo_cuatro,
+  //             total_cuatrienio: totalCuatrienio,
+  //           })
+  //           .eq('id', existingData.id)
+  //           .select()
+  //           .single();
 
-        if (updateError) {
-          throw new InternalServerErrorException(
-            'Error al actualizar programación física: ' + updateError.message,
-          );
-        }
+  //                 if (updateError) {
+  //           throw new InternalServerErrorException(
+  //             'Error al actualizar programación física: ' + updateError.message,
+  //           );
+  //         }
 
-        resultData.push(updatedData);
-      }
+  //         resultData.push(updatedData as any);
+  //     }
 
-      return {
-        status: true,
-        message: 'Programaciones físicas POAI actualizadas exitosamente',
-        data: resultData,
-        error: null,
-      };
-    } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      return {
-        status: false,
-        message: 'Error al actualizar programaciones físicas POAI',
-        error: error.message,
-        data: [],
-      };
-    }
-  }
+  //     return {
+  //       status: true,
+  //       message: 'Programaciones físicas POAI actualizadas exitosamente',
+  //       data: resultData,
+  //       error: null,
+  //     };
+  //   } catch (error) {
+  //     if (error instanceof BadRequestException) throw error;
+  //     return {
+  //       status: false,
+  //       message: 'Error al actualizar programaciones físicas POAI',
+  //       error: error.message,
+  //       data: [],
+  //     };
+  //   }
+  // }
 
   async delete(id: number): Promise<ProgramacionFisicaResponse> {
     try {
@@ -412,6 +467,141 @@ export class ProgramacionFisicaService {
       return {
         status: false,
         message: 'Error al eliminar programación física',
+        error: error.message,
+        data: [],
+      };
+    }
+  }
+
+  async updatePeriodo(periodo: number, requests: ProgramacionFisicaRequest[]): Promise<ProgramacionFisicaResponse> {
+    try {
+      // Determinar qué columna de periodo usar
+      let periodoColumn: string;
+      switch (periodo) {
+        case 1:
+          periodoColumn = 'periodo_uno';
+          break;
+        case 2:
+          periodoColumn = 'periodo_dos';
+          break;
+        case 3:
+          periodoColumn = 'periodo_tres';
+          break;
+        case 4:
+          periodoColumn = 'periodo_cuatro';
+          break;
+        default:
+          return {
+            status: false,
+            message: `Periodo ${periodo} no válido`,
+            error: 'Periodo inválido',
+            data: [],
+          };
+      }
+
+      const resultData: any[] = [];
+
+      for (const request of requests) {
+        // Verificar que existe la meta producto
+        const { data: metaExists, error: metaError } =
+          await this.supabaseService.clientAdmin
+            .from('meta_producto')
+            .select('id, nombre')
+            .eq('id', request.meta_id)
+            .single();
+
+        if (metaError || !metaExists) {
+          return {
+            status: false,
+            message: `No existe una meta producto con el ID ${request.meta_id}`,
+            error: 'Meta producto no encontrada',
+            data: [],
+          };
+        }
+
+        // Buscar registro existente
+        const { data: existingData, error: existingError } =
+          await this.supabaseService.clientAdmin
+            .from('programacion_fisica')
+            .select('*')
+            .eq('meta_id', request.meta_id)
+            .single();
+
+        if (existingError && existingError.code !== 'PGRST116') {
+          throw new InternalServerErrorException(
+            'Error al verificar registro existente: ' + existingError.message,
+          );
+        }
+
+        if (!existingData) {
+          // Crear nuevo registro
+          const newData = {
+            meta_id: request.meta_id,
+            periodo_uno: periodo === 1 ? request.periodo_uno : 0,
+            periodo_dos: periodo === 2 ? request.periodo_dos : 0,
+            periodo_tres: periodo === 3 ? request.periodo_tres : 0,
+            periodo_cuatro: periodo === 4 ? request.periodo_cuatro : 0,
+            total_cuatrienio: request.periodo_uno + request.periodo_dos + request.periodo_tres + request.periodo_cuatro,
+          };
+
+          const { data: createdData, error: createError } =
+            await this.supabaseService.clientAdmin
+              .from('programacion_fisica')
+              .insert(newData)
+              .select()
+              .single();
+
+          if (createError) {
+            throw new InternalServerErrorException(
+              'Error al crear programación física: ' + createError.message,
+            );
+          }
+
+          resultData.push(createdData as any);
+        } else {
+          // Actualizar registro existente - solo el periodo específico
+          const updateData = {
+            [periodoColumn]: request[periodoColumn as keyof ProgramacionFisicaRequest],
+          };
+
+          // Recalcular total_cuatrienio
+          const totalCuatrienio =
+            (periodo === 1 ? request.periodo_uno : existingData.periodo_uno) +
+            (periodo === 2 ? request.periodo_dos : existingData.periodo_dos) +
+            (periodo === 3 ? request.periodo_tres : existingData.periodo_tres) +
+            (periodo === 4 ? request.periodo_cuatro : existingData.periodo_cuatro);
+
+          updateData['total_cuatrienio'] = totalCuatrienio;
+
+          const { data: updatedData, error: updateError } =
+            await this.supabaseService.clientAdmin
+              .from('programacion_fisica')
+              .update(updateData)
+              .eq('id', existingData.id)
+              .select()
+              .single();
+
+          if (updateError) {
+            throw new InternalServerErrorException(
+              'Error al actualizar programación física: ' + updateError.message,
+            );
+          }
+
+          resultData.push(updatedData);
+        }
+      }
+
+      return {
+        status: true,
+        message: `Programaciones físicas del periodo ${periodo} actualizadas exitosamente`,
+        data: resultData,
+        error: null,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      return {
+        status: false,
+        message: 'Error al actualizar programaciones físicas por periodo',
         error: error.message,
         data: [],
       };

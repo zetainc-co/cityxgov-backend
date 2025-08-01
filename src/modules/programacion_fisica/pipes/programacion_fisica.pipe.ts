@@ -7,6 +7,42 @@ import {
 import { ProgramacionFisicaRequest } from '../dto/programacion_fisica.dto';
 
 @Injectable()
+export class ValidatePeriodoPipe implements PipeTransform {
+  transform(value: any, metadata: ArgumentMetadata): number {
+    if (value === undefined || value === null || value === '') {
+      throw new BadRequestException({
+        status: false,
+        message: 'El período es requerido',
+        data: [],
+      });
+    }
+
+    // Convertir a número si es string
+    const numericValue = typeof value === 'string' ? Number(value) : value;
+
+    // Verificar que sea un número válido
+    if (isNaN(numericValue) || !Number.isInteger(numericValue)) {
+      throw new BadRequestException({
+        status: false,
+        message: 'El período debe ser un número entero válido',
+        data: [],
+      });
+    }
+
+    // Verificar que sea un período válido (1-4)
+    if (numericValue < 1 || numericValue > 4) {
+      throw new BadRequestException({
+        status: false,
+        message: 'El período debe ser un número entre 1 y 4',
+        data: [],
+      });
+    }
+
+    return numericValue;
+  }
+}
+
+@Injectable()
 export class CreateProgramacionFisicaPipe implements PipeTransform {
   transform(value: any, metadata: ArgumentMetadata): ProgramacionFisicaRequest {
     if (!value) {
