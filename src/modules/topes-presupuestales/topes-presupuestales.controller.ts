@@ -19,42 +19,28 @@ import { TopesPresupuestalesService } from './topes-presupuestales.service';
 export class TopesPresupuestalesController {
   constructor(private readonly topesPresupuestalesService: TopesPresupuestalesService) {}
 
-  //crear tope presupuestal
-  @Post()
+  // Obtener topes por periodo específico con relaciones
+  @Get('periodo/:periodo')
   @Roles('superadmin', 'admin')
-  async create(@Body() createRequest: TopesPresupuestalesRequest) {
-    return await this.topesPresupuestalesService.create(createRequest);
+  async findByPeriodo(@Param('periodo') periodo: string) {
+    return await this.topesPresupuestalesService.findByPeriodo(+periodo);
   }
 
-  //obtener todos los topes presupuestales
-  @Get()
-  @Roles('superadmin', 'admin')
-  async findAll() {
-    return await this.topesPresupuestalesService.findAll();
-  }
-
-  //obtener un tope presupuestal por año
-  @Get('ano/:año')
-  @Roles('superadmin', 'admin')
-  async findByAño(@Param('año') año: string) {
-    return await this.topesPresupuestalesService.findByAño(+año);
-  }
-
-  //obtener las fuentes con topes presupuestales por año
-  @Get('fuentes/:año')
-  @Roles('superadmin', 'admin')
-  async getFuentesConTopes(@Param('año') año: string) {
-    return await this.topesPresupuestalesService.getFuentesConTopes(+año);
-  }
-
-  //obtener un tope presupuestal por id
+  // Obtener un tope presupuestal por ID con relaciones
   @Get(':id')
   @Roles('superadmin', 'admin')
   async findOne(@Param('id') id: string) {
     return await this.topesPresupuestalesService.findOne(+id);
   }
 
-  //actualizar un tope presupuestal
+  // Crear nuevo tope presupuestal
+  @Post()
+  @Roles('superadmin', 'admin')
+  async create(@Body() createRequest: TopesPresupuestalesRequest) {
+    return await this.topesPresupuestalesService.create(createRequest);
+  }
+
+  // Actualizar tope presupuestal
   @Patch(':id')
   @Roles('superadmin', 'admin')
   async update(
@@ -64,11 +50,10 @@ export class TopesPresupuestalesController {
     return await this.topesPresupuestalesService.update(+id, updateRequest);
   }
 
-  //eliminar un tope presupuestal
+  // Eliminar tope presupuestal
   @Delete(':id')
   @Roles('superadmin', 'admin')
   async delete(@Param('id') id: string) {
     return await this.topesPresupuestalesService.delete(+id);
   }
-
 }

@@ -26,20 +26,12 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
       });
     }
 
-    const { nombre, codigo_enfoque } = value;
+    const { nombre } = value;
 
     if (!nombre) {
       throw new BadRequestException({
         status: false,
         message: 'El nombre es requerido',
-        data: [],
-      });
-    }
-
-    if (!codigo_enfoque) {
-      throw new BadRequestException({
-        status: false,
-        message: 'El código de enfoque es requerido',
         data: [],
       });
     }
@@ -52,23 +44,15 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
       });
     }
 
-    if (typeof codigo_enfoque !== 'string') {
-      throw new BadRequestException({
-        status: false,
-        message: 'El código de enfoque debe ser una cadena de texto',
-        data: [],
-      });
-    }
 
-    this.validateRequiredFields(nombre, codigo_enfoque);
+    this.validateRequiredFields(nombre);
 
     return {
       nombre: nombre.trim(),
-      codigo_enfoque: codigo_enfoque.trim(),
     };
   }
 
-  private validateRequiredFields(nombre: string, codigo_enfoque: string) {
+  private validateRequiredFields(nombre: string) {
     // Validaciones para nombre
     if (nombre.trim() === '') {
       throw new BadRequestException({
@@ -90,31 +74,6 @@ export class CreateEnfoquePoblacionalPipe implements PipeTransform {
       throw new BadRequestException({
         status: false,
         message: 'El nombre no puede tener más de 100 caracteres',
-        data: [],
-      });
-    }
-
-    // Validaciones para código de enfoque
-    if (codigo_enfoque.trim() === '') {
-      throw new BadRequestException({
-        status: false,
-        message: 'El código de enfoque no puede estar vacío',
-        data: [],
-      });
-    }
-
-    if (codigo_enfoque.length < 2) {
-      throw new BadRequestException({
-        status: false,
-        message: 'El código de enfoque debe tener al menos 2 caracteres',
-        data: [],
-      });
-    }
-
-    if (codigo_enfoque.length > 20) {
-      throw new BadRequestException({
-        status: false,
-        message: 'El código de enfoque no puede tener más de 20 caracteres',
         data: [],
       });
     }
