@@ -87,6 +87,7 @@ CREATE TABLE enfoque_poblacional (
 CREATE TABLE fuentes_financiacion (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR NOT NULL,
+    codigo_fuente VARCHAR NOT NULL,
     marco_normativo TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

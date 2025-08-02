@@ -154,6 +154,7 @@ export class FuentesFinanciacionService {
       //Verifica si hay cambios en la fuente de financiación
       if (
         existingData.nombre === updateRequest.nombre &&
+        existingData.codigo_fuente === updateRequest.codigo_fuente &&
         existingData.marco_normativo === updateRequest.marco_normativo
       ) {
         return {
@@ -170,6 +171,7 @@ export class FuentesFinanciacionService {
           .from('fuentes_financiacion')
           .update({
             nombre: updateRequest.nombre,
+            codigo_fuente: updateRequest.codigo_fuente,
             marco_normativo: updateRequest.marco_normativo,
             updated_at: new Date().toISOString(),
           })

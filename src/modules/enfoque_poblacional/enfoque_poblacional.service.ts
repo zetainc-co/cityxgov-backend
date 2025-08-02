@@ -162,10 +162,7 @@ export class EnfoquePoblacionalService {
       }
 
       //Verifica si hay cambios
-      if (
-        existingData.nombre === updateRequest.nombre &&
-        existingData.codigo_enfoque === updateRequest.codigo_enfoque
-      ) {
+      if (existingData.nombre === updateRequest.nombre) {
         return {
           status: false,
           message: 'No se detectaron cambios en el enfoque poblacional',
@@ -180,7 +177,6 @@ export class EnfoquePoblacionalService {
           .from('enfoque_poblacional')
           .update({
             nombre: updateRequest.nombre,
-            codigo_enfoque: updateRequest.codigo_enfoque,
             updated_at: new Date().toISOString(),
           })
           .eq('id', id)

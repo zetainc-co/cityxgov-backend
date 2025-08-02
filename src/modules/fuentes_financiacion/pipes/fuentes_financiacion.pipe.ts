@@ -29,7 +29,7 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
       });
     }
 
-    const { nombre, marco_normativo } = value;
+    const { nombre, codigo_fuente, marco_normativo } = value;
 
     // Validar que nombre esté presente
     if (!nombre) {
@@ -66,6 +66,41 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
       });
     }
 
+    // Validar que codigo_fuente esté presente
+    if (!codigo_fuente) {
+      throw new BadRequestException({
+        status: false,
+        message: 'El código de fuente es requerido',
+        data: [],
+      });
+    }
+
+    // Validar que codigo_fuente sea string
+    if (typeof codigo_fuente !== 'string') {
+      throw new BadRequestException({
+        status: false,
+        message: 'El código de fuente debe ser una cadena de texto',
+        data: [],
+      });
+    }
+
+    // Validar longitud del codigo_fuente
+    if (codigo_fuente.trim().length < 2) {
+      throw new BadRequestException({
+        status: false,
+        message: 'El código de fuente debe tener al menos 2 caracteres',
+        data: [],
+      });
+    }
+
+    if (codigo_fuente.trim().length > 20) {
+      throw new BadRequestException({
+        status: false,
+        message: 'El código de fuente no puede tener más de 20 caracteres',
+        data: [],
+      });
+    }
+
     // Validar marco_normativo si está presente
     if (marco_normativo !== undefined && marco_normativo !== null) {
       if (typeof marco_normativo !== 'string') {
@@ -87,6 +122,7 @@ export class CreateFuentesFinanciacionPipe implements PipeTransform {
 
     return {
       nombre: nombre.trim(),
+      codigo_fuente: codigo_fuente.trim(),
       marco_normativo: marco_normativo?.trim() || undefined,
     };
   }
