@@ -39,6 +39,13 @@ export class ProgramacionFinancieraController {
     return this.programacionFinancieraService.findOne(id);
   }
 
+  // Obtiene programaciones financieras por periodo específico
+  @Get('periodo/:periodo')
+  @Roles('superadmin', 'admin')
+  async findByPeriodo(@Param('periodo') periodo: string) {
+    return this.programacionFinancieraService.findByPeriodo(+periodo);
+  }
+
   // Crea una nueva programacion financiera
   @Post()
   @Roles('superadmin', 'admin')
@@ -50,12 +57,22 @@ export class ProgramacionFinancieraController {
   }
 
   // Actualiza múltiples programaciones financieras POAI
-  @Patch('update-multiple')
+  // @Patch('update-multiple')
+  // @Roles('superadmin', 'admin')
+  // async updateMultiple(
+  //   @Body() requests: ProgramacionFinancieraRequest[],
+  // ) {
+  //   return this.programacionFinancieraService.updateMultiple(requests);
+  // }
+
+  // Actualiza solo un periodo específico para POAI
+  @Patch('update-periodo/:periodo')
   @Roles('superadmin', 'admin')
-  async updateMultiple(
+  async updatePeriodo(
+    @Param('periodo') periodo: string,
     @Body() requests: ProgramacionFinancieraRequest[],
   ) {
-    return this.programacionFinancieraService.updateMultiple(requests);
+    return this.programacionFinancieraService.updatePeriodo(+periodo, requests);
   }
 
   // Actualiza una programacion financiera Plan Indicativo

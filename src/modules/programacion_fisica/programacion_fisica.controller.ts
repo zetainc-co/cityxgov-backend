@@ -16,6 +16,7 @@ import { ProgramacionFisicaService } from './programacion_fisica.service';
 import {
   CreateProgramacionFisicaPipe,
   ValidateIdPipe,
+  ValidatePeriodoPipe,
   UpdateMultipleProgramacionFisicaPipe,
 } from './pipes/programacion_fisica.pipe';
 
@@ -30,6 +31,12 @@ export class ProgramacionFisicaController {
   @Roles('superadmin', 'admin')
   async findAll() {
     return this.programacionFisicaService.findAll();
+  }
+
+  @Get('periodo/:periodo')
+  @Roles('superadmin', 'admin')
+  async findByPeriodo(@Param('periodo', ValidatePeriodoPipe) periodo: number) {
+    return this.programacionFisicaService.findByPeriodo(periodo);
   }
 
   @Get(':id')
@@ -47,14 +54,15 @@ export class ProgramacionFisicaController {
     return this.programacionFisicaService.create(createRequest);
   }
 
-  // Actualiza múltiples programaciones físicas POAI
-  @Patch('update-multiple')
+  // Actualiza programaciones físicas por periodo específico
+  @Patch('update-periodo/:periodo')
   @Roles('superadmin', 'admin')
-  async updateMultiple(
+  async updatePeriodo(
+    @Param('periodo', ValidatePeriodoPipe) periodo: number,
     @Body(UpdateMultipleProgramacionFisicaPipe)
     requests: ProgramacionFisicaRequest[],
   ) {
-    return this.programacionFisicaService.updateMultiple(requests);
+    return this.programacionFisicaService.updatePeriodo(periodo, requests);
   }
 
   @Patch(':id')

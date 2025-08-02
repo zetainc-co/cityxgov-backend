@@ -3,7 +3,7 @@ export interface BancoProyectos {
   codigo_bpin: string;
   nombre: string;
   descripcion: string;
-  año: number;
+  periodo: number;
   created_at: string;
   updated_at: string;
 }
@@ -12,7 +12,7 @@ export interface BancoProyectosRequest {
   codigo_bpin: string;
   nombre: string;
   descripcion: string;
-  año: number;
+  periodo: number;
   meta_producto_ids?: number[];
 }
 
