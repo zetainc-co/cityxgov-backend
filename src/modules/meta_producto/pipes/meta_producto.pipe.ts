@@ -37,6 +37,9 @@ export class CreateMetaProductoPipe implements PipeTransform {
       orientacion,
       enfoque_territorial,
       meta_resultado_ids,
+      codigo_programa,
+      codigo_producto,
+      codigo_sector,
     } = value;
 
     // Validar campos requeridos
@@ -60,6 +63,9 @@ export class CreateMetaProductoPipe implements PipeTransform {
       orientacion: orientacion.trim(),
       enfoque_territorial: enfoque_territorial.trim(),
       meta_resultado_ids: meta_resultado_ids,
+      codigo_programa: codigo_programa.trim(),
+      codigo_producto: codigo_producto.trim(),
+      codigo_sector: codigo_sector.trim(),
     };
   }
 
@@ -76,6 +82,9 @@ export class CreateMetaProductoPipe implements PipeTransform {
       'orientacion',
       'enfoque_territorial',
       'meta_resultado_ids',
+      'codigo_programa',
+      'codigo_producto',
+      'codigo_sector',
     ];
 
     const missingFields = requiredFields.filter((field) => {
@@ -124,6 +133,9 @@ export class CreateMetaProductoPipe implements PipeTransform {
       'meta_numerica',
       'orientacion',
       'enfoque_territorial',
+      'codigo_programa',
+      'codigo_producto',
+      'codigo_sector',
     ];
 
     stringFields.forEach((field) => {

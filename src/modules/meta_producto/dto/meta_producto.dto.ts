@@ -10,6 +10,9 @@ export interface MetaProducto {
   meta_numerica: string;
   orientacion: string;
   enfoque_territorial: string;
+  codigo_programa: string;
+  codigo_producto: string;
+  codigo_sector: string;
   created_at: string;
   updated_at: string;
 }
@@ -26,6 +29,9 @@ export interface MetaProductoRequest {
   meta_numerica: string;
   orientacion: string;
   meta_resultado_ids: number[];
+  codigo_programa: string;
+  codigo_producto: string;
+  codigo_sector: string;
 }
 
 export interface MetaProductoResponse {

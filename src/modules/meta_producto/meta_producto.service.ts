@@ -184,6 +184,9 @@ export class MetaProductoService {
             meta_numerica: createRequest.meta_numerica.trim(),
             orientacion: createRequest.orientacion.trim(),
             enfoque_territorial: createRequest.enfoque_territorial.trim(),
+            codigo_programa: createRequest.codigo_programa?.trim() || '',
+            codigo_producto: createRequest.codigo_producto?.trim() || '',
+            codigo_sector: createRequest.codigo_sector?.trim() || '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -331,7 +334,10 @@ export class MetaProductoService {
         existing.nombre !== updateRequest.nombre.trim() ||
         existing.meta_numerica !== updateRequest.meta_numerica.trim() ||
         existing.orientacion !== updateRequest.orientacion.trim() ||
-        existing.enfoque_territorial !== updateRequest.enfoque_territorial.trim();
+        existing.enfoque_territorial !== updateRequest.enfoque_territorial.trim() ||
+        existing.codigo_programa !== (updateRequest.codigo_programa?.trim() || '') ||
+        existing.codigo_producto !== (updateRequest.codigo_producto?.trim() || '') ||
+        existing.codigo_sector !== (updateRequest.codigo_sector?.trim() || '');
 
       // Verificar cambios en meta_resultado_ids
       const hasMetaResultadoChanges =
@@ -397,6 +403,9 @@ export class MetaProductoService {
               meta_numerica: updateRequest.meta_numerica.trim(),
               orientacion: updateRequest.orientacion.trim(),
               enfoque_territorial: updateRequest.enfoque_territorial.trim(),
+              codigo_programa: updateRequest.codigo_programa?.trim() || '',
+              codigo_producto: updateRequest.codigo_producto?.trim() || '',
+              codigo_sector: updateRequest.codigo_sector?.trim() || '',
               updated_at: new Date().toISOString(),
             })
             .eq('id', id)
