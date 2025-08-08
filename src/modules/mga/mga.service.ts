@@ -73,7 +73,7 @@ export class MgaService {
         'Producto activo': 'producto_activo',
         'Código indicador (MGA)': 'codigo_indicador',
         'Indicador de producto (MGA)': 'indicador_producto',
-        'Unidad de medida del indicador de producto': 'unidad_medida_indicador',
+        'Unidad de medida del indicador de producto': 'unidad_medida_indicador_producto',
         Principal: 'principal',
         'Indicador de producto activo': 'indicador_producto_activo',
       };
@@ -173,7 +173,7 @@ export class MgaService {
       'producto_activo',
       'codigo_indicador',
       'indicador_producto',
-      'unidad_medida_indicador',
+      'unidad_medida_indicador_producto',
       'principal',
       'indicador_producto_activo',
     ];
@@ -230,7 +230,7 @@ export class MgaService {
       'producto_activo',
       'codigo_indicador',
       'indicador_producto',
-      'unidad_medida_indicador',
+      'unidad_medida_indicador_producto',
       'principal',
       'indicador_producto_activo',
     ];

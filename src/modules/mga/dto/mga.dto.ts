@@ -7,7 +7,7 @@ export interface CreateMgaDto {
   producto_activo?: string | null;
   codigo_indicador?: number | null;
   indicador_producto?: string | null;
-  unidad_medida_indicador?: string | null;
+  unidad_medida_indicador_producto?: string | null;
   principal?: string | null;
   indicador_producto_activo?: string | null;
 }
@@ -21,7 +21,7 @@ export interface UpdateMgaDto {
   producto_activo?: string | null;
   codigo_indicador?: number | null;
   indicador_producto?: string | null;
-  unidad_medida_indicador?: string | null;
+  unidad_medida_indicador_producto?: string | null;
   principal?: string | null;
   indicador_producto_activo?: string | null;
 }
@@ -36,7 +36,7 @@ export interface Mga {
   producto_activo?: string | null;
   codigo_indicador?: number | null;
   indicador_producto?: string | null;
-  unidad_medida_indicador?: string | null;
+  unidad_medida_indicador_producto?: string | null;
   principal?: string | null;
   indicador_producto_activo?: string | null;
   created_at: Date;

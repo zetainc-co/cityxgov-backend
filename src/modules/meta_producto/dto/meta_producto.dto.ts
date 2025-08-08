@@ -2,17 +2,19 @@ export interface MetaProducto {
   id: number;
   caracterizacion_mga_id: number;
   area_id: number;
+  unidad_medida?: string;
   ods_id: number;
-  enfoque_poblacional_id: number;
-  linea_base: string;
+  linea_base: number;
   instrumento_planeacion: string;
   nombre: string;
   meta_numerica: string;
   orientacion: string;
-  enfoque_territorial: string;
-  codigo_programa: string;
-  codigo_producto: string;
-  codigo_sector: string;
+  enfoque_territorial: any;
+  codigo_programa: string; //MGA
+  codigo_producto: string; //MGA
+  codigo_sector: string; //MGA
+  unidad_medida_indicador_producto: string; //MGA
+  nombre_indicador: string;
   created_at: string;
   updated_at: string;
 }
@@ -21,9 +23,9 @@ export interface MetaProductoRequest {
   caracterizacion_mga_id: number;
   area_id: number;
   ods_id: number;
-  enfoque_poblacional_id: number;
-  enfoque_territorial: string;
-  linea_base: string;
+  enfoque_poblacional_ids?: number[]; // Array de IDs - opcional
+  enfoque_territorial: any; // JSONB - obligatorio
+  linea_base: number;
   instrumento_planeacion: string;
   nombre: string;
   meta_numerica: string;
@@ -32,6 +34,9 @@ export interface MetaProductoRequest {
   codigo_programa: string;
   codigo_producto: string;
   codigo_sector: string;
+  unidad_medida?: string; // Opcional
+  unidad_medida_indicador_producto?: string; // Opcional
+  nombre_indicador?: string; // Opcional
 }
 
 export interface MetaProductoResponse {

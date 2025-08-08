@@ -31,6 +31,7 @@ export class MetaProductoService {
       // Para cada meta_producto, obtener solo los IDs de sus meta_resultados
       const metaProductosWithIds = await Promise.all(
         data.map(async (metaProducto) => {
+          // Obtener meta_resultados
           const { data: metaResultados, error: metaResultadosError } =
             await this.supabaseService.clientAdmin
               .from('metas_resultado_producto')
@@ -42,16 +43,28 @@ export class MetaProductoService {
               `Error obteniendo meta_resultados para meta_producto ${metaProducto.id}:`,
               metaResultadosError,
             );
-            return {
-              ...metaProducto,
-              meta_resultado_ids: [],
-            };
+          }
+
+          // Obtener enfoques poblacionales
+          const { data: enfoquesPoblacionales, error: enfoquesError } =
+            await this.supabaseService.clientAdmin
+              .from('meta_producto_enfoque_poblacional')
+              .select('enfoque_poblacional_id')
+              .eq('meta_producto_id', metaProducto.id);
+
+          if (enfoquesError) {
+            console.error(
+              `Error obteniendo enfoques poblacionales para meta_producto ${metaProducto.id}:`,
+              enfoquesError,
+            );
           }
 
           return {
             ...metaProducto,
             meta_resultado_ids:
               metaResultados?.map((mr) => mr.meta_resultado_id) || [],
+            enfoque_poblacional_ids:
+              enfoquesPoblacionales?.map((ep) => ep.enfoque_poblacional_id) || [],
           };
         }),
       );
@@ -114,11 +127,27 @@ export class MetaProductoService {
         );
       }
 
-      // Agregar solo los IDs de meta_resultados al resultado
+      // Obtener solo los IDs de enfoques poblacionales relacionados
+      const { data: enfoquesPoblacionales, error: enfoquesError } =
+        await this.supabaseService.clientAdmin
+          .from('meta_producto_enfoque_poblacional')
+          .select('enfoque_poblacional_id')
+          .eq('meta_producto_id', id);
+
+      if (enfoquesError) {
+        throw new InternalServerErrorException(
+          'Error al obtener enfoques poblacionales relacionados: ' +
+          enfoquesError.message,
+        );
+      }
+
+      // Agregar los IDs de meta_resultados y enfoques poblacionales al resultado
       const result = {
         ...data,
         meta_resultado_ids:
           metaResultados?.map((mr) => mr.meta_resultado_id) || [],
+        enfoque_poblacional_ids:
+          enfoquesPoblacionales?.map((ep) => ep.enfoque_poblacional_id) || [],
       };
 
       return {
@@ -177,16 +206,18 @@ export class MetaProductoService {
             caracterizacion_mga_id: createRequest.caracterizacion_mga_id,
             area_id: createRequest.area_id,
             ods_id: createRequest.ods_id,
-            enfoque_poblacional_id: createRequest.enfoque_poblacional_id,
-            linea_base: createRequest.linea_base.trim(),
+            linea_base: createRequest.linea_base,
             instrumento_planeacion: createRequest.instrumento_planeacion.trim(),
             nombre: createRequest.nombre.trim(),
             meta_numerica: createRequest.meta_numerica.trim(),
             orientacion: createRequest.orientacion.trim(),
-            enfoque_territorial: createRequest.enfoque_territorial.trim(),
+            enfoque_territorial: createRequest.enfoque_territorial || [],
             codigo_programa: createRequest.codigo_programa?.trim() || '',
             codigo_producto: createRequest.codigo_producto?.trim() || '',
             codigo_sector: createRequest.codigo_sector?.trim() || '',
+            unidad_medida: createRequest.unidad_medida?.trim() || '',
+            unidad_medida_indicador_producto: createRequest.unidad_medida_indicador_producto?.trim() || '',
+            nombre_indicador: createRequest.nombre_indicador?.trim() || '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -199,11 +230,19 @@ export class MetaProductoService {
         );
       }
 
-      // Crear las relaciones muchos a muchos
+      // Crear las relaciones muchos a muchos con meta_resultados
       await this.createMetaResultadoRelations(
         metaProducto.id,
         createRequest.meta_resultado_ids,
       );
+
+      // Crear las relaciones muchos a muchos con enfoques poblacionales
+      if (createRequest.enfoque_poblacional_ids && createRequest.enfoque_poblacional_ids.length > 0) {
+        await this.createEnfoquePoblacionalRelations(
+          metaProducto.id,
+          createRequest.enfoque_poblacional_ids,
+        );
+      }
 
       // Obtener solo los IDs de meta_resultados relacionados
       const { data: metaResultados, error: metaResultadosError } =
@@ -219,11 +258,27 @@ export class MetaProductoService {
         );
       }
 
-      // Agregar solo los IDs de meta_resultados al resultado
+      // Obtener solo los IDs de enfoques poblacionales relacionados
+      const { data: enfoquesPoblacionales, error: enfoquesError } =
+        await this.supabaseService.clientAdmin
+          .from('meta_producto_enfoque_poblacional')
+          .select('enfoque_poblacional_id')
+          .eq('meta_producto_id', metaProducto.id);
+
+      if (enfoquesError) {
+        throw new InternalServerErrorException(
+          'Error al obtener enfoques poblacionales relacionados: ' +
+          enfoquesError.message,
+        );
+      }
+
+      // Agregar los IDs de meta_resultados y enfoques poblacionales al resultado
       const result = {
         ...metaProducto,
         meta_resultado_ids:
           metaResultados?.map((mr) => mr.meta_resultado_id) || [],
+        enfoque_poblacional_ids:
+          enfoquesPoblacionales?.map((ep) => ep.enfoque_poblacional_id) || [],
       };
 
       return {
@@ -326,25 +381,50 @@ export class MetaProductoService {
         updateRequest.caracterizacion_mga_id ||
         existing.area_id !== updateRequest.area_id ||
         existing.ods_id !== updateRequest.ods_id ||
-        existing.enfoque_poblacional_id !==
-        updateRequest.enfoque_poblacional_id ||
-        existing.linea_base !== updateRequest.linea_base.trim() ||
+        existing.linea_base !== updateRequest.linea_base ||
         existing.instrumento_planeacion !==
         updateRequest.instrumento_planeacion.trim() ||
         existing.nombre !== updateRequest.nombre.trim() ||
         existing.meta_numerica !== updateRequest.meta_numerica.trim() ||
         existing.orientacion !== updateRequest.orientacion.trim() ||
-        existing.enfoque_territorial !== updateRequest.enfoque_territorial.trim() ||
+        JSON.stringify(existing.enfoque_territorial) !== JSON.stringify(updateRequest.enfoque_territorial || []) ||
         existing.codigo_programa !== (updateRequest.codigo_programa?.trim() || '') ||
         existing.codigo_producto !== (updateRequest.codigo_producto?.trim() || '') ||
-        existing.codigo_sector !== (updateRequest.codigo_sector?.trim() || '');
+        existing.codigo_sector !== (updateRequest.codigo_sector?.trim() || '') ||
+        existing.unidad_medida !== (updateRequest.unidad_medida?.trim() || '') ||
+        existing.unidad_medida_indicador_producto !== (updateRequest.unidad_medida_indicador_producto?.trim() || '') ||
+        existing.nombre_indicador !== (updateRequest.nombre_indicador?.trim() || '');
+
+      // Obtener enfoques poblacionales actuales para comparar
+      const { data: currentEnfoques, error: currentEnfoquesError } =
+        await this.supabaseService.clientAdmin
+          .from('meta_producto_enfoque_poblacional')
+          .select('enfoque_poblacional_id')
+          .eq('meta_producto_id', id);
+
+      if (currentEnfoquesError) {
+        throw new InternalServerErrorException(
+          'Error al obtener enfoques poblacionales actuales: ' +
+          currentEnfoquesError.message,
+        );
+      }
+
+      const currentEnfoqueIds =
+        currentEnfoques?.map((ep) => ep.enfoque_poblacional_id) || [];
+      const newEnfoqueIds = [...(updateRequest.enfoque_poblacional_ids || [])].sort();
+      const currentEnfoqueIdsSorted = [...currentEnfoqueIds].sort();
 
       // Verificar cambios en meta_resultado_ids
       const hasMetaResultadoChanges =
         JSON.stringify(newMetaResultadoIds) !==
         JSON.stringify(currentMetaResultadoIdsSorted);
 
-      if (!hasBasicChanges && !hasMetaResultadoChanges) {
+      // Verificar cambios en enfoque_poblacional_ids
+      const hasEnfoquePoblacionalChanges =
+        JSON.stringify(newEnfoqueIds) !==
+        JSON.stringify(currentEnfoqueIdsSorted);
+
+      if (!hasBasicChanges && !hasMetaResultadoChanges && !hasEnfoquePoblacionalChanges) {
         // Obtener el meta_producto básico
         const { data: metaProductoBasic, error: basicError } =
           await this.supabaseService.clientAdmin
@@ -395,17 +475,19 @@ export class MetaProductoService {
               caracterizacion_mga_id: updateRequest.caracterizacion_mga_id,
               area_id: updateRequest.area_id,
               ods_id: updateRequest.ods_id,
-              enfoque_poblacional_id: updateRequest.enfoque_poblacional_id,
-              linea_base: updateRequest.linea_base.trim(),
+              linea_base: updateRequest.linea_base,
               instrumento_planeacion:
                 updateRequest.instrumento_planeacion.trim(),
               nombre: updateRequest.nombre.trim(),
               meta_numerica: updateRequest.meta_numerica.trim(),
               orientacion: updateRequest.orientacion.trim(),
-              enfoque_territorial: updateRequest.enfoque_territorial.trim(),
+              enfoque_territorial: updateRequest.enfoque_territorial || [],
               codigo_programa: updateRequest.codigo_programa?.trim() || '',
               codigo_producto: updateRequest.codigo_producto?.trim() || '',
               codigo_sector: updateRequest.codigo_sector?.trim() || '',
+              unidad_medida: updateRequest.unidad_medida?.trim() || '',
+              unidad_medida_indicador_producto: updateRequest.unidad_medida_indicador_producto?.trim() || '',
+              nombre_indicador: updateRequest.nombre_indicador?.trim() || '',
               updated_at: new Date().toISOString(),
             })
             .eq('id', id)
@@ -424,6 +506,14 @@ export class MetaProductoService {
         await this.updateMetaResultadoRelations(
           id,
           updateRequest.meta_resultado_ids,
+        );
+      }
+
+      // Actualizar relaciones muchos a muchos si hay cambios
+      if (hasEnfoquePoblacionalChanges && updateRequest.enfoque_poblacional_ids) {
+        await this.updateEnfoquePoblacionalRelations(
+          id,
+          updateRequest.enfoque_poblacional_ids,
         );
       }
 
@@ -455,11 +545,27 @@ export class MetaProductoService {
         );
       }
 
-      // Agregar solo los IDs de meta_resultados al resultado
+      // Obtener solo los IDs de enfoques poblacionales relacionados
+      const { data: enfoquesPoblacionales, error: enfoquesError } =
+        await this.supabaseService.clientAdmin
+          .from('meta_producto_enfoque_poblacional')
+          .select('enfoque_poblacional_id')
+          .eq('meta_producto_id', id);
+
+      if (enfoquesError) {
+        throw new InternalServerErrorException(
+          'Error al obtener enfoques poblacionales relacionados: ' +
+          enfoquesError.message,
+        );
+      }
+
+      // Agregar los IDs de meta_resultados y enfoques poblacionales al resultado
       const result = {
         ...metaProductoUpdated,
         meta_resultado_ids:
           metaResultados?.map((mr) => mr.meta_resultado_id) || [],
+        enfoque_poblacional_ids:
+          enfoquesPoblacionales?.map((ep) => ep.enfoque_poblacional_id) || [],
       };
 
       return {
@@ -467,7 +573,7 @@ export class MetaProductoService {
         message: 'Meta producto actualizado correctamente',
         data: [result],
       };
-    } catch (error) {
+        } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -565,6 +671,18 @@ export class MetaProductoService {
         );
       }
 
+      // Eliminar relaciones de enfoques poblacionales
+      const { error: enfoquesError } = await this.supabaseService.clientAdmin
+        .from('meta_producto_enfoque_poblacional')
+        .delete()
+        .eq('meta_producto_id', id);
+
+      if (enfoquesError) {
+        throw new InternalServerErrorException(
+          'Error al eliminar relaciones de enfoques poblacionales: ' + enfoquesError.message,
+        );
+      }
+
       // Eliminar meta_producto
       const { error: deletedError } = await this.supabaseService.clientAdmin
         .from('meta_producto')
@@ -649,18 +767,43 @@ export class MetaProductoService {
       });
     }
 
-    // Validar Enfoque Poblacional
+    // Validar Enfoque Poblacional (opcional) - viene del modulo enfoque_poblacional
+    if (request.enfoque_poblacional_ids && Array.isArray(request.enfoque_poblacional_ids) && request.enfoque_poblacional_ids.length > 0) {
+      for (const enfoqueId of request.enfoque_poblacional_ids) {
     const { data: enfoque, error: enfoqueError } =
       await this.supabaseService.clientAdmin
         .from('enfoque_poblacional')
         .select('id')
-        .eq('id', request.enfoque_poblacional_id)
+            .eq('id', enfoqueId)
         .maybeSingle();
 
     if (enfoqueError || !enfoque) {
+          throw new BadRequestException({
+            status: false,
+            message: `No existe un enfoque poblacional con el ID ${enfoqueId}`,
+            data: [],
+          });
+        }
+      }
+    }
+
+    // Validar Enfoque Territorial (obligatorio) - solo valores 1 (Urbano) o 2 (Rural)
+    if (!request.enfoque_territorial || !Array.isArray(request.enfoque_territorial) || request.enfoque_territorial.length === 0) {
       throw new BadRequestException({
         status: false,
-        message: `No existe un enfoque poblacional con el ID ${request.enfoque_poblacional_id}`,
+        message: 'Debe seleccionar al menos un enfoque territorial',
+        data: [],
+      });
+    }
+
+    // Validar que solo contenga valores 1 o 2
+    const valoresValidos = [1, 2];
+    const valoresInvalidos = request.enfoque_territorial.filter(id => !valoresValidos.includes(id));
+
+    if (valoresInvalidos.length > 0) {
+      throw new BadRequestException({
+        status: false,
+        message: 'Los valores de enfoque territorial solo pueden ser 1 (Urbano) o 2 (Rural)',
         data: [],
       });
     }
@@ -725,5 +868,47 @@ export class MetaProductoService {
 
     // Crear nuevas relaciones
     await this.createMetaResultadoRelations(metaProductoId, metaResultadoIds);
+  }
+
+  private async createEnfoquePoblacionalRelations(
+    metaProductoId: number,
+    enfoquePoblacionalIds: number[],
+  ): Promise<void> {
+    const relations = enfoquePoblacionalIds.map((enfoqueId) => ({
+      meta_producto_id: metaProductoId,
+      enfoque_poblacional_id: enfoqueId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await this.supabaseService.clientAdmin
+      .from('meta_producto_enfoque_poblacional')
+      .insert(relations);
+
+    if (error) {
+      throw new InternalServerErrorException(
+        'Error al crear relaciones con enfoques poblacionales: ' + error.message,
+      );
+    }
+  }
+
+  private async updateEnfoquePoblacionalRelations(
+    metaProductoId: number,
+    enfoquePoblacionalIds: number[],
+  ): Promise<void> {
+    // Eliminar relaciones existentes
+    const { error: deleteError } = await this.supabaseService.clientAdmin
+      .from('meta_producto_enfoque_poblacional')
+      .delete()
+      .eq('meta_producto_id', metaProductoId);
+
+    if (deleteError) {
+      throw new InternalServerErrorException(
+        'Error al eliminar relaciones existentes: ' + deleteError.message,
+      );
+    }
+
+    // Crear nuevas relaciones
+    await this.createEnfoquePoblacionalRelations(metaProductoId, enfoquePoblacionalIds);
   }
 }
