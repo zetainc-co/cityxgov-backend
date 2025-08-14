@@ -5,6 +5,8 @@ import * as ExcelJS from 'exceljs';
 @Injectable()
 export class PlanIndicativoAuditoriaService {
     constructor(private readonly supabaseService: SupabaseService) { }
+    private sectorColumns: string[] = [];
+    private progColumns: string[] = [];
 
     async capturarSnapshot(
         usuarioId: number | null,
@@ -21,6 +23,20 @@ export class PlanIndicativoAuditoriaService {
         } catch (e) {
             return { status: false, error: (e as any).message };
         }
+    }
+
+    private setupMainTitle(ws: ExcelJS.Worksheet, fecha: Date, lastCol: string = 'AO') {
+        ws.mergeCells(`A1:${lastCol}1`);
+        const titleCell = ws.getCell('A1');
+        titleCell.value = 'Plan Indicativo - Snapshot';
+        titleCell.font = { size: 14, bold: true, name: 'Arial' } as any;
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
+
+        ws.mergeCells(`A2:${lastCol}2`);
+        const dateCell = ws.getCell('A2');
+        dateCell.value = `Fecha de cambio: ${fecha.toLocaleString('es-CO')}`;
+        dateCell.font = { size: 10, name: 'Arial' } as any;
+        dateCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
     }
 
     async listarSnapshots({ fechaDesde, fechaHasta }: { fechaDesde?: string; fechaHasta?: string }) {
@@ -73,8 +89,12 @@ export class PlanIndicativoAuditoriaService {
             pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true },
         });
 
-        this.setupMainTitle(worksheet, fecha);
-        this.setupMainHeaders(worksheet);
+        const [fuentesFinanciacion] = await Promise.all([
+            this.fetchFuentesFinanciacion(),
+            this.fetchEnfoquePoblacional(),
+        ]);
+        const lastCol = this.setupMainHeaders(worksheet, fuentesFinanciacion);
+        this.setupMainTitle(worksheet, fecha, lastCol);
 
         const areasById = await this.fetchAreasById(snapshot);
         const { metasByMetaProductoId, lineaById, metaResultadoById } = await this.fetchMetaResultadoYLineas(snapshot);
@@ -88,14 +108,14 @@ export class PlanIndicativoAuditoriaService {
 
         const metasProducto = Array.isArray(snapshot.meta_producto) ? snapshot.meta_producto : [];
 
-        let currentRow = 4;
+        let currentRow = 5;
         for (const mp of metasProducto) {
             const relaciones = metasByMetaProductoId.get(Number(mp.id)) || [];
             const mr = relaciones.length > 0 ? metaResultadoById.get(relaciones[0]) : undefined;
             const linea = mr ? lineaById.get(Number(mr.linea_estrategica_id)) : undefined;
             const pf = progFisicaByMetaId.get(Number(mp.id));
 
-            const sec = currentRow - 3;
+            const sec = currentRow - 4;
             worksheet.getCell(`A${currentRow}`).value = sec;
             worksheet.getCell(`B${currentRow}`).value = areasById.get(Number(mp.area_id)) || '';
             worksheet.getCell(`C${currentRow}`).value = linea?.nombre || '';
@@ -108,7 +128,19 @@ export class PlanIndicativoAuditoriaService {
             worksheet.getCell(`J${currentRow}`).value = linea?.plan_departamental || '';
             worksheet.getCell(`K${currentRow}`).value = linea ? (firstProgramaByLinea.get(Number(linea.id)) || '') : '';
 
-            const mga = mgaById.get(Number(mp.caracterizacion_mga_id));
+            let mga = mgaById.get(Number(mp.caracterizacion_mga_id));
+            if (!mga && mp?.caracterizacion_mga_id) {
+                // Fallback: si por alguna razón no está en el prefetch, traerlo directo y cachearlo
+                const { data: mgaOne } = await this.supabaseService.clientAdmin
+                    .from('caracterizacion_mga')
+                    .select('id, sector, programa, producto, codigo_indicador, indicador_producto, unidad_medida_indicador, unidad_medida_producto')
+                    .eq('id', Number(mp.caracterizacion_mga_id))
+                    .maybeSingle();
+                if (mgaOne) {
+                    mga = mgaOne as any;
+                    mgaById.set(Number(mgaOne.id), mgaOne);
+                }
+            }
             worksheet.getCell(`L${currentRow}`).value = `${mp?.codigo_sector || ''}${mga?.sector ? ' - ' + mga.sector : ''}`;
             worksheet.getCell(`M${currentRow}`).value = mp?.codigo_programa || '';
             worksheet.getCell(`N${currentRow}`).value = odsById.get(Number(mp.ods_id)) || '';
@@ -116,7 +148,12 @@ export class PlanIndicativoAuditoriaService {
             worksheet.getCell(`P${currentRow}`).value = mp?.instrumento_planeacion || '';
 
             worksheet.getCell(`Q${currentRow}`).value = mp?.nombre || '';
-            worksheet.getCell(`R${currentRow}`).value = mga?.codigo_indicador || '';
+            const codigoIndicadorMGA = (mp as any)?.codigo_indicador ?? mga?.codigo_indicador ?? '';
+            const cellR = worksheet.getCell(`R${currentRow}`);
+            cellR.value = codigoIndicadorMGA !== '' && codigoIndicadorMGA !== null && codigoIndicadorMGA !== undefined
+                ? String(codigoIndicadorMGA)
+                : '';
+            (cellR as any).numFmt = '@';
             worksheet.getCell(`S${currentRow}`).value = mp?.nombre_indicador || mga?.indicador_producto || '';
             worksheet.getCell(`T${currentRow}`).value = mp?.unidad_medida || '';
             worksheet.getCell(`U${currentRow}`).value = (mp as any)?.unidad_medida_indicador_producto || mga?.unidad_medida_indicador || mga?.unidad_medida_producto || '';
@@ -125,19 +162,31 @@ export class PlanIndicativoAuditoriaService {
             worksheet.getCell(`X${currentRow}`).value = mp?.orientacion || '';
             worksheet.getCell(`Y${currentRow}`).value = '';
 
+            // Marcar dinámicamente enfoques poblacionales seleccionados
             if (Array.isArray(mp?.enfoque_poblacional_ids)) {
-                if (mp.enfoque_poblacional_ids.length > 0) worksheet.getCell(`Z${currentRow}`).value = 'X';
+                const selected = new Set<number>(mp.enfoque_poblacional_ids.map((v: any) => Number(v)));
+                this.enfoquePoblacionalColumns.forEach(({ col, id }) => {
+                    if (selected.has(id)) worksheet.getCell(`${col}${currentRow}`).value = 'X';
+                });
             }
+
+            // Enfoque Territorial (Sector): 1=Urbano, 2=Rural
+            const enfoqueTerritorial = Array.isArray((mp as any)?.enfoque_territorial) ? (mp as any).enfoque_territorial : [];
+            const [sectorUrbanoCol, sectorRuralCol] = this.sectorColumns.length === 2 ? this.sectorColumns : ['AI', 'AJ'];
+            if (enfoqueTerritorial.includes(1)) worksheet.getCell(`${sectorUrbanoCol}${currentRow}`).value = 'X'; // Urbano
+            if (enfoqueTerritorial.includes(2)) worksheet.getCell(`${sectorRuralCol}${currentRow}`).value = 'X'; // Rural
 
             if (pf) {
-                worksheet.getCell(`AI${currentRow}`).value = pf.periodo_uno ?? 0;
-                worksheet.getCell(`AJ${currentRow}`).value = pf.periodo_dos ?? 0;
-                worksheet.getCell(`AK${currentRow}`).value = pf.periodo_tres ?? 0;
-                worksheet.getCell(`AL${currentRow}`).value = pf.periodo_cuatro ?? 0;
-                worksheet.getCell(`AM${currentRow}`).value = pf.total_cuatrienio ?? 0;
+                const cols = this.progColumns.length === 5 ? this.progColumns : ['AK', 'AL', 'AM', 'AN', 'AO'];
+                worksheet.getCell(`${cols[0]}${currentRow}`).value = pf.periodo_uno ?? 0;
+                worksheet.getCell(`${cols[1]}${currentRow}`).value = pf.periodo_dos ?? 0;
+                worksheet.getCell(`${cols[2]}${currentRow}`).value = pf.periodo_tres ?? 0;
+                worksheet.getCell(`${cols[3]}${currentRow}`).value = pf.periodo_cuatro ?? 0;
+                worksheet.getCell(`${cols[4]}${currentRow}`).value = pf.total_cuatrienio ?? 0;
             }
 
-            this.applyRowBorders(worksheet, currentRow, 'A', 'AM');
+            // Rellenar en blanco las columnas del bloque de Seguimiento + Fuentes (por ahora sin datos)
+            this.applyRowBorders(worksheet, currentRow, 'A', lastCol);
             currentRow++;
         }
 
@@ -147,44 +196,218 @@ export class PlanIndicativoAuditoriaService {
     }
 
 
-    // Estos helpers serán completados en siguientes pasos (se declaran para compilar en etapas)
-    private setupMainTitle(ws: ExcelJS.Worksheet, date: Date) {
-        ws.mergeCells('A1:AS1');
-        const titleCell = ws.getCell('A1');
-        titleCell.value = 'PLAN INDICATIVO PLAN MUNICIPAL DE DESARROLLO';
-        titleCell.font = { size: 14, bold: true, name: 'Arial' } as any;
-        titleCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
-        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } } as any;
-
-        ws.mergeCells('A2:AS2');
-        const dateCell = ws.getCell('A2');
-        dateCell.value = `Estado al: ${date.toLocaleString('es-CO')}`;
-        dateCell.font = { size: 10, italic: true, name: 'Arial' } as any;
-        dateCell.alignment = { horizontal: 'center' } as any;
-    }
-
-    private setupMainHeaders(ws: ExcelJS.Worksheet) {
-        const headers = [
-            'N° Meta', 'Dependencia Líder', 'Eje Plan Municipal de Desarrollo 2024 - 2028', 'Meta de Resultado', 'Línea Base', 'Año Línea Base', 'Meta 2028', 'Fuente', 'Plan Nacional de Desarrollo', 'Plan Departamental de Desarrollo', 'Programa Plan Municipal de Desarrollo 2024 - 2028', 'Sector MGA (código - nombre)', 'Cód. Programa MGA', 'ODS', 'Cód. Producto MGA', 'Instrumento de Planeación', 'Producto PMD', 'Cód. Indicador MGA', 'Indicador Producto', 'Unidad de Medida', 'Unidad de Medida MGA', 'Línea Base', 'Meta 2028', 'Orientación de la Meta', 'Enfoque Derechos Humanos', 'Mujer', 'LGBTIQ+', 'Primera Infancia', 'Adolescente', 'Juvenil', 'Adulto Mayor', 'Vejez', 'Migrante', 'Discapacidad', 'Pr. 2024', 'Pr. 2025', 'Pr. 2026', 'Pr. 2027', 'Pr. 2028'
+    private setupMainHeaders(ws: ExcelJS.Worksheet, fuentesFinanciacion: { id: number; nombre: string }[]): string {
+        // === PRIMERA FILA DE HEADERS (fila 3) - Headers principales ===
+        const mainHeaders = [
+            'N° Meta', 'Dependencia Líder', 'Eje Plan Municipal de Desarrollo 2024 - 2028',
+            'Meta de Resultado', 'Línea Base', 'Año Línea Base', 'Meta 2028', 'Fuente',
+            'Plan Nacional de Desarrollo', 'Plan Departamental de Desarrollo',
+            'Programa Plan Municipal de Desarrollo 2024 - 2028', 'Cód. Sector MGA',
+            'Cód. Programa MGA', 'ODS', 'Cód. Producto MGA', 'Instrumento de Planeación',
+            'Producto PMD', 'Cód. Indicador MGA', 'Indicador Producto', 'Unidad de Medida',
+            'Unidad de Medida MGA', 'Línea Base', 'Meta 2028', 'Orientación de la Meta',
+            'Enfoque Derechos Humanos'
         ];
-        const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM'];
-        headers.forEach((text, idx) => {
-            const c = ws.getCell(`${cols[idx]}3`);
-            c.value = text;
-            this.applyHeaderStyle(c, 'FFE6F5E6');
+
+        const mainCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
+
+        mainHeaders.forEach((text, idx) => {
+            const cell = ws.getCell(`${mainCols[idx]}3`);
+            cell.value = text;
+            this.applyHeaderStyle(cell, 'FFE6F5E6');
         });
 
-        const enfoque = ws.getCell('AB3');
-        enfoque.value = 'Enfoque Poblacional (Si aplica)';
-        enfoque.font = { size: 12, bold: true, name: 'Arial' } as any;
-        enfoque.alignment = { horizontal: 'center', vertical: 'middle' } as any;
-        enfoque.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        // === HEADER "ENFOQUE POBLACIONAL" dinámico ===
+        // Obtener enfoques disponibles desde BD
+        const enfoques = this.cachedEnfoquePoblacional || [];
+        const enfoqueStart = 'Z';
+        const enfoqueEnd = this.numberToColumn(this.columnToNumber(enfoqueStart) + Math.max(1, enfoques.length) - 1);
+        ws.mergeCells(`${enfoqueStart}3:${enfoqueEnd}3`);
+        const enfoqueCell = ws.getCell(`${enfoqueStart}3`);
+        enfoqueCell.value = 'Enfoque Poblacional (Sí aplica)';
+        enfoqueCell.font = { size: 12, bold: true, name: 'Arial' } as any;
+        enfoqueCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
+        enfoqueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        enfoqueCell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        } as any;
 
-        const prog = ws.getCell('AL3');
-        prog.value = 'Programación Física Meta Producto';
-        prog.font = { size: 12, bold: true, name: 'Arial' } as any;
-        prog.alignment = { horizontal: 'center', vertical: 'middle' } as any;
-        prog.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        // === HEADER "SECTOR" (Enfoque Territorial) ===
+        // Comienza justo después del bloque de Enfoque Poblacional
+        const sectorStart = this.numberToColumn(this.columnToNumber(enfoqueEnd) + 1);
+        const sectorEnd = this.numberToColumn(this.columnToNumber(sectorStart) + 1); // 2 columnas
+        ws.mergeCells(`${sectorStart}3:${sectorEnd}3`);
+        const sectorCell = ws.getCell(`${sectorStart}3`);
+        sectorCell.value = 'Sector';
+        sectorCell.font = { size: 12, bold: true, name: 'Arial' } as any;
+        sectorCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
+        sectorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        sectorCell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        } as any;
+
+        // === HEADER "PROGRAMACIÓN FÍSICA" ===
+        // Comienza justo después del bloque de Sector
+        const progStart = this.numberToColumn(this.columnToNumber(sectorEnd) + 1);
+        const progEnd = this.numberToColumn(this.columnToNumber(progStart) + 4); // 5 columnas
+        ws.mergeCells(`${progStart}3:${progEnd}3`);
+        const progCell = ws.getCell(`${progStart}3`);
+        progCell.value = 'Programación Física Meta Producto';
+        progCell.font = { size: 12, bold: true, name: 'Arial' } as any;
+        progCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
+        progCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        progCell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        } as any;
+
+        // === SEGUNDA FILA DE HEADERS (fila 4) - Sub-headers específicos ===
+        // Headers del enfoque poblacional
+        // Pintar sub-headers dinámicos para enfoques
+        const enfoqueColumns: { col: string; id: number }[] = [];
+        if (enfoques.length === 0) {
+            const cell = ws.getCell(`${enfoqueStart}4`);
+            cell.value = '—';
+            this.applySubHeaderStyle(cell);
+            enfoqueColumns.push({ col: enfoqueStart, id: -1 });
+        } else {
+            enfoques.forEach((e: { id: number; nombre: string }, idx: number) => {
+                const col = this.numberToColumn(this.columnToNumber(enfoqueStart) + idx);
+                const cell = ws.getCell(`${col}4`);
+                cell.value = e.nombre;
+                this.applySubHeaderStyle(cell);
+                enfoqueColumns.push({ col, id: Number(e.id) });
+            });
+        }
+        // Guardar mapping para usar al escribir filas
+        this.enfoquePoblacionalColumns = enfoqueColumns;
+
+        // Headers de Sector
+        const sectorHeaders = ['Urbano', 'Rural'];
+        const sectorCols = [sectorStart, this.numberToColumn(this.columnToNumber(sectorStart) + 1)];
+        sectorHeaders.forEach((text, idx) => {
+            const cell = ws.getCell(`${sectorCols[idx]}4`);
+            cell.value = text;
+            this.applySubHeaderStyle(cell);
+        });
+        this.sectorColumns = sectorCols;
+
+        // Headers de programación física
+        const progHeaders = ['2024', '2025', '2026', '2027', 'Total'];
+        const progCols = Array.from({ length: 5 }, (_, i) => this.numberToColumn(this.columnToNumber(progStart) + i));
+
+        progHeaders.forEach((text, idx) => {
+            const cell = ws.getCell(`${progCols[idx]}4`);
+            cell.value = text;
+            this.applySubHeaderStyle(cell);
+        });
+        this.progColumns = progCols;
+
+        // Altura de filas para mejorar legibilidad
+        ws.getRow(3).height = 28;
+        ws.getRow(4).height = 40;
+
+        // === HEADER "SEGUIMIENTO EJECUCIÓN FISICA" ===
+        const SeguiFisico = [
+            'Ej. 2024', 'Avance Físico (%) 2024', 'No Acumulada (IM) 2024', 'Acumulada (MA) 2024', 'Rango 2024', 'Observación 2024',
+            'Ej. 2025', 'Avance Físico (%) 2025', 'No Acumulada (IM) 2025', 'Acumulada (MA) 2025', 'Rango 2025', 'Observación 2025',
+            'Ej. 2026', 'Avance Físico (%) 2026', 'No Acumulada (IM) 2026', 'Acumulada (MA) 2026', 'Rango 2026', 'Observación 2026',
+            'Ej. 2027', 'Avance Físico (%) 2027', 'No Acumulada (IM) 2027', 'Acumulada (MA) 2027', 'Rango 2027', 'Observación 2027',
+            'Ej. 2028', 'Avance Físico (%) 2028', 'Rango 2028', 'Observación 2028'
+        ];
+        // === HEADER AGRUPADO: SEGUIMIENTO EJECUCIÓN FÍSICA META PRODUCTO ===
+        // Comienza inmediatamente después de Programación Física y ocupa tantas columnas como headers tenga
+        const segStart = this.numberToColumn(this.columnToNumber(progEnd) + 1);
+        const segEnd = this.numberToColumn(this.columnToNumber(segStart) + (SeguiFisico.length - 1));
+        ws.mergeCells(`${segStart}3:${segEnd}3`);
+        const segFisicaCell = ws.getCell(`${segStart}3`);
+        segFisicaCell.value = 'Seguimiento Ejecución Física Meta Producto';
+        segFisicaCell.font = { size: 12, bold: true, name: 'Arial' } as any;
+        segFisicaCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
+        segFisicaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        segFisicaCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } } as any;
+        const SeguiFisicoCols = Array.from({ length: SeguiFisico.length }, (_, i) => this.numberToColumn(this.columnToNumber(segStart) + i));
+
+        SeguiFisico.forEach((text, idx) => {
+            const cell = ws.getCell(`${SeguiFisicoCols[idx]}4`);
+            cell.value = text;
+            this.applySubHeaderStyle(cell);
+        });
+
+        // === SUB-BLOQUES: FUENTES DE FINANCIACIÓN POR AÑO ===
+        // Construimos dinámicamente headers para 2024-2027 con las fuentes disponibles,
+        // colocándolos CONTIGUOS sin columnas vacías entre bloques.
+        const colAdvance = (col: string, offset: number) => {
+            const base = this.columnToNumber(col);
+            return this.numberToColumn(base + offset);
+        };
+
+        // Ajustar ancho para el bloque de seguimiento
+        for (let c = this.columnToNumber(segStart); c <= this.columnToNumber(segEnd); c++) {
+            ws.getColumn(c).width = 16;
+        }
+
+        const anos = ['2024', '2025', '2026', '2027'];
+        let currStart = this.numberToColumn(this.columnToNumber(segEnd) + 1); // Empieza justo después del bloque de seguimiento
+        let lastCol = segEnd;
+        for (const ano of anos) {
+            const numCols = Math.max(1, fuentesFinanciacion.length);
+            const endCol = colAdvance(currStart, numCols - 1);
+            ws.mergeCells(`${currStart}3:${endCol}3`);
+            const headerCell = ws.getCell(`${currStart}3`);
+            headerCell.value = `Fuentes de Financiación ${ano}`;
+            this.applyHeaderStyle(headerCell, 'FF90EE90');
+
+            if (fuentesFinanciacion.length === 0) {
+                const cell = ws.getCell(`${currStart}4`);
+                cell.value = '—';
+                this.applySubHeaderStyle(cell);
+                ws.getColumn(this.columnToNumber(currStart)).width = 18;
+            } else {
+                fuentesFinanciacion.forEach((f, i) => {
+                    const col = colAdvance(currStart, i);
+                    const cell = ws.getCell(`${col}4`);
+                    cell.value = f.nombre;
+                    this.applySubHeaderStyle(cell);
+                    ws.getColumn(this.columnToNumber(col)).width = 18;
+                });
+            }
+
+            lastCol = endCol;
+            currStart = colAdvance(endCol, 1);
+        }
+
+        // === APLICAR MERGE A LOS HEADERS PRINCIPALES PARA QUE ABARQUEN DOS FILAS ===
+        // Para que los headers principales (A-Y) se vean bien, necesitamos hacer merge vertical
+        mainCols.forEach(col => {
+            ws.mergeCells(`${col}3:${col}4`);
+            const cell = ws.getCell(`${col}3`);
+            // Reaplicar el estilo después del merge
+            this.applyHeaderStyle(cell, 'FFE6F5E6');
+        });
+
+        return lastCol;
+    }
+
+    // Nuevo método para el estilo de sub-headers
+    private applySubHeaderStyle(cell: ExcelJS.Cell) {
+        cell.font = { size: 9, bold: true, name: 'Arial' } as any;
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } } as any;
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        } as any;
     }
 
     private applyHeaderStyle(cell: ExcelJS.Cell, bgColor = 'FFE6E6E6') {
@@ -206,10 +429,23 @@ export class PlanIndicativoAuditoriaService {
     }
 
     private configureColumnWidths(ws: ExcelJS.Worksheet) {
-        const w: Record<string, number> = { A: 6, B: 26, C: 28, D: 30, E: 12, F: 12, G: 16, H: 16, I: 26, J: 26, K: 28, L: 22, M: 16, N: 16, O: 24, P: 18, Q: 24, R: 16, S: 22, T: 16, U: 18, V: 12, W: 12, X: 18, Y: 18, Z: 10, AA: 10, AB: 14, AC: 12, AD: 12, AE: 14, AF: 10, AG: 12, AH: 14, AI: 10, AJ: 10, AK: 10, AL: 10, AM: 10 };
+        const w: Record<string, number> = {
+            A: 6, B: 26, C: 28, D: 30, E: 12, F: 12, G: 16, H: 16, I: 26, J: 26, K: 28, L: 22, M: 16, N: 16, O: 24, P: 18, Q: 24, R: 16, S: 22, T: 16, U: 18, V: 12, W: 12, X: 18, Y: 18,
+            Z: 10, AA: 10, AB: 14, AC: 12, AD: 12, AE: 14, AF: 10, AG: 12, AH: 14, AI: 10, AJ: 10, AK: 12, AL: 12, AM: 12, AN: 12, AO: 12,
+            AP: 12, AQ: 16, AR: 16, AS: 16, AT: 12, AU: 24, AV: 12, AW: 16, AX: 16, AY: 16, AZ: 12, BA: 24
+        };
         for (const [col, width] of Object.entries(w)) ws.getColumn(col).width = width;
     }
     private columnToNumber(col: string) { let r = 0; for (let i = 0; i < col.length; i++) r = r * 26 + (col.charCodeAt(i) - 64); return r; }
+    private numberToColumn(num: number) { let s = ''; while (num > 0) { const m = (num - 1) % 26; s = String.fromCharCode(65 + m) + s; num = Math.floor((num - 1) / 26); } return s; }
+
+    private async fetchFuentesFinanciacion(): Promise<{ id: number; nombre: string }[]> {
+        const { data } = await this.supabaseService.clientAdmin
+            .from('fuentes_financiacion')
+            .select('id, nombre')
+            .order('id');
+        return (data || []).map((d: any) => ({ id: Number(d.id), nombre: String(d.nombre) }));
+    }
     private async fetchAreasById(snapshot: any): Promise<Map<number, string>> {
         const metas = Array.isArray(snapshot.meta_producto) ? snapshot.meta_producto : [];
         const ids = Array.from(new Set(metas.map((m: any) => Number(m.area_id)).filter(Boolean)));
@@ -303,6 +539,19 @@ export class PlanIndicativoAuditoriaService {
             if (!map.has(key)) map.set(key, p.nombre as string);
         }
         return map;
+    }
+
+    // Cache y fetch de Enfoque Poblacional
+    private cachedEnfoquePoblacional: { id: number; nombre: string }[] | null = null;
+    private enfoquePoblacionalColumns: { col: string; id: number }[] = [];
+    private async fetchEnfoquePoblacional(): Promise<{ id: number; nombre: string }[]> {
+        if (this.cachedEnfoquePoblacional) return this.cachedEnfoquePoblacional;
+        const { data } = await this.supabaseService.clientAdmin
+            .from('enfoque_poblacional')
+            .select('id, nombre')
+            .order('id');
+        this.cachedEnfoquePoblacional = (data || []).map((d: any) => ({ id: Number(d.id), nombre: String(d.nombre) }));
+        return this.cachedEnfoquePoblacional;
     }
 }
 
