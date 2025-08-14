@@ -26,17 +26,12 @@ export class PlanIndicativoAuditoriaService {
     }
 
     private setupMainTitle(ws: ExcelJS.Worksheet, fecha: Date, lastCol: string = 'AO') {
-        ws.mergeCells(`A1:${lastCol}1`);
+        // Un solo título ocupando filas 1 y 2 completas
+        ws.mergeCells(`A1:${lastCol}2`);
         const titleCell = ws.getCell('A1');
-        titleCell.value = 'Plan Indicativo - Snapshot';
-        titleCell.font = { size: 14, bold: true, name: 'Arial' } as any;
-        titleCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
-
-        ws.mergeCells(`A2:${lastCol}2`);
-        const dateCell = ws.getCell('A2');
-        dateCell.value = `Fecha de cambio: ${fecha.toLocaleString('es-CO')}`;
-        dateCell.font = { size: 10, name: 'Arial' } as any;
-        dateCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
+        titleCell.value = 'Plan Indicativo Municipal de Desarrollo';
+        titleCell.font = { size: 16, bold: true, name: 'Arial' } as any;
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
     }
 
     async listarSnapshots({ fechaDesde, fechaHasta }: { fechaDesde?: string; fechaHasta?: string }) {
@@ -93,14 +88,15 @@ export class PlanIndicativoAuditoriaService {
             this.fetchFuentesFinanciacion(),
             this.fetchEnfoquePoblacional(),
         ]);
-        const lastCol = this.setupMainHeaders(worksheet, fuentesFinanciacion);
-        this.setupMainTitle(worksheet, fecha, lastCol);
+        const headersInfo = this.setupMainHeaders(worksheet, fuentesFinanciacion);
+        this.setupMainTitle(worksheet, fecha, headersInfo.lastCol);
 
         const areasById = await this.fetchAreasById(snapshot);
         const { metasByMetaProductoId, lineaById, metaResultadoById } = await this.fetchMetaResultadoYLineas(snapshot);
         const mgaById = await this.fetchMgaById(snapshot);
         const odsById = await this.fetchOdsById(snapshot);
         const firstProgramaByLinea = await this.fetchFirstProgramaByLinea(Array.from(lineaById.keys()));
+        const enfoquesByMetaId = await this.fetchEnfoquePoblacionalIdsByMeta(snapshot);
 
         const progFisicaByMetaId = new Map<number, any>();
         const progFis = Array.isArray(snapshot.programacion_fisica) ? snapshot.programacion_fisica : [];
@@ -162,10 +158,14 @@ export class PlanIndicativoAuditoriaService {
             worksheet.getCell(`X${currentRow}`).value = mp?.orientacion || '';
 
             // Marcar dinámicamente enfoques poblacionales seleccionados
-            if (Array.isArray(mp?.enfoque_poblacional_ids)) {
-                const selected = new Set<number>(mp.enfoque_poblacional_ids.map((v: any) => Number(v)));
+            const idsFromSnapshot = Array.isArray(mp?.enfoque_poblacional_ids)
+                ? (mp.enfoque_poblacional_ids as any[]).map((v: any) => Number(v))
+                : [];
+            const idsFromDb = enfoquesByMetaId.get(Number(mp.id)) || [];
+            const selectedIds = new Set<number>([...idsFromSnapshot, ...idsFromDb].filter((v) => Number.isFinite(v)));
+            if (selectedIds.size > 0) {
                 this.enfoquePoblacionalColumns.forEach(({ col, id }) => {
-                    if (selected.has(id)) worksheet.getCell(`${col}${currentRow}`).value = 'X';
+                    if (selectedIds.has(id)) worksheet.getCell(`${col}${currentRow}`).value = 'X';
                 });
             }
 
@@ -181,11 +181,19 @@ export class PlanIndicativoAuditoriaService {
                 worksheet.getCell(`${cols[1]}${currentRow}`).value = pf.periodo_dos ?? 0;
                 worksheet.getCell(`${cols[2]}${currentRow}`).value = pf.periodo_tres ?? 0;
                 worksheet.getCell(`${cols[3]}${currentRow}`).value = pf.periodo_cuatro ?? 0;
-                worksheet.getCell(`${cols[4]}${currentRow}`).value = pf.total_cuatrienio ?? 0;
+                // "Pr. 2028" debe quedar en blanco
+                worksheet.getCell(`${cols[4]}${currentRow}`).value = '';
             }
 
-            // Rellenar en blanco las columnas del bloque de Seguimiento + Fuentes (por ahora sin datos)
-            this.applyRowBorders(worksheet, currentRow, 'A', lastCol);
+            // Total cuatrienio (2024-2027) suma de todas las fuentes
+            if (headersInfo.finStart && headersInfo.finEnd && headersInfo.totalCol) {
+                const totalCell = worksheet.getCell(`${headersInfo.totalCol}${currentRow}`);
+                totalCell.value = { formula: `SUM(${headersInfo.finStart}${currentRow}:${headersInfo.finEnd}${currentRow})` } as any;
+                totalCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
+            }
+
+            // Rellenar en blanco las columnas del bloque de Seguimiento + Fuentes + Total
+            this.applyRowBorders(worksheet, currentRow, 'A', headersInfo.lastCol);
             currentRow++;
         }
 
@@ -195,7 +203,7 @@ export class PlanIndicativoAuditoriaService {
     }
 
 
-    private setupMainHeaders(ws: ExcelJS.Worksheet, fuentesFinanciacion: { id: number; nombre: string }[]): string {
+    private setupMainHeaders(ws: ExcelJS.Worksheet, fuentesFinanciacion: { id: number; nombre: string }[]): { lastCol: string; finStart?: string; finEnd?: string; totalCol?: string } {
         // === PRIMERA FILA DE HEADERS (fila 3) - Headers principales ===
         const mainHeaders = [
             'N° Meta', 'Dependencia Líder', 'Eje Plan Municipal de Desarrollo 2024 - 2028',
@@ -218,7 +226,7 @@ export class PlanIndicativoAuditoriaService {
         // === HEADER "ENFOQUE POBLACIONAL" dinámico ===
         // Obtener enfoques disponibles desde BD
         const enfoques = this.cachedEnfoquePoblacional || [];
-        const enfoqueStart = 'Z';
+        const enfoqueStart = 'Y';
         const enfoqueEnd = this.numberToColumn(this.columnToNumber(enfoqueStart) + Math.max(1, enfoques.length) - 1);
         ws.mergeCells(`${enfoqueStart}3:${enfoqueEnd}3`);
         const enfoqueCell = ws.getCell(`${enfoqueStart}3`);
@@ -299,7 +307,7 @@ export class PlanIndicativoAuditoriaService {
         this.sectorColumns = sectorCols;
 
         // Headers de programación física
-        const progHeaders = ['2024', '2025', '2026', '2027', 'Total'];
+        const progHeaders = ['Pr. 2024', 'Pr. 2025', 'Pr. 2026', 'Pr. 2027', 'Pr. 2028'];
         const progCols = Array.from({ length: 5 }, (_, i) => this.numberToColumn(this.columnToNumber(progStart) + i));
 
         progHeaders.forEach((text, idx) => {
@@ -356,6 +364,8 @@ export class PlanIndicativoAuditoriaService {
         const anos = ['2024', '2025', '2026', '2027'];
         let currStart = this.numberToColumn(this.columnToNumber(segEnd) + 1); // Empieza justo después del bloque de seguimiento
         let lastCol = segEnd;
+        let firstFinStart: string | undefined;
+        let lastFinEnd: string | undefined;
         for (const ano of anos) {
             const numCols = Math.max(1, fuentesFinanciacion.length);
             const endCol = colAdvance(currStart, numCols - 1);
@@ -379,12 +389,23 @@ export class PlanIndicativoAuditoriaService {
                 });
             }
 
+            if (!firstFinStart) firstFinStart = currStart;
+            lastFinEnd = endCol;
             lastCol = endCol;
             currStart = colAdvance(endCol, 1);
         }
 
+        // Agregar columna de Total Cuatrienio 2024-2027
+        const totalCol = currStart; // siguiente columna
+        ws.mergeCells(`${totalCol}3:${totalCol}4`);
+        const totalHeaderCell = ws.getCell(`${totalCol}3`);
+        totalHeaderCell.value = 'Total Cuatrienio 2024 - 2027';
+        this.applyHeaderStyle(totalHeaderCell, 'FF90EE90');
+        ws.getColumn(totalCol).width = 18;
+        lastCol = totalCol;
+
         // === APLICAR MERGE A LOS HEADERS PRINCIPALES PARA QUE ABARQUEN DOS FILAS ===
-        // Para que los headers principales (A-Y) se vean bien, necesitamos hacer merge vertical
+        // Para que los headers principales (A-X) se vean bien, necesitamos hacer merge vertical
         mainCols.forEach(col => {
             ws.mergeCells(`${col}3:${col}4`);
             const cell = ws.getCell(`${col}3`);
@@ -392,7 +413,7 @@ export class PlanIndicativoAuditoriaService {
             this.applyHeaderStyle(cell, 'FFE6F5E6');
         });
 
-        return lastCol;
+        return { lastCol, finStart: firstFinStart, finEnd: lastFinEnd, totalCol };
     }
 
     // Nuevo método para el estilo de sub-headers
@@ -523,6 +544,24 @@ export class PlanIndicativoAuditoriaService {
         return map;
     }
 
+    private async fetchEnfoquePoblacionalIdsByMeta(snapshot: any): Promise<Map<number, number[]>> {
+        const metas = Array.isArray(snapshot.meta_producto) ? snapshot.meta_producto : [];
+        const metaIds = metas.map((m: any) => Number(m.id));
+        const map = new Map<number, number[]>();
+        if (metaIds.length === 0) return map;
+        const { data, error } = await this.supabaseService.clientAdmin
+            .from('meta_producto_enfoque_poblacional')
+            .select('meta_producto_id, enfoque_poblacional_id')
+            .in('meta_producto_id', metaIds);
+        if (error) return map;
+        for (const r of data || []) {
+            const key = Number(r.meta_producto_id);
+            const arr = map.get(key) || [];
+            arr.push(Number(r.enfoque_poblacional_id));
+            map.set(key, arr);
+        }
+        return map;
+    }
     private async fetchFirstProgramaByLinea(lineaIds: number[]): Promise<Map<number, string>> {
         if (lineaIds.length === 0) return new Map();
         const { data, error } = await this.supabaseService.clientAdmin
