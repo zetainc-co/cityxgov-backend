@@ -13,6 +13,9 @@ import { Roles } from '../rol/decorator/roles.decorator';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { MetaProductoRequest } from './dto/meta_producto.dto';
 import { MetaProductoService } from './meta_producto.service';
+import { Request } from 'express';
+import { Req } from '@nestjs/common';
+import { PlanIndicativoAuditoriaService } from '../plan_indicativo_auditoria/plan_indicativo_auditoria.service';
 import {
   CreateMetaProductoPipe,
   ValidateIdPipe,
@@ -21,7 +24,10 @@ import {
 @Controller('meta-producto')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MetaProductoController {
-  constructor(private readonly metaProductoService: MetaProductoService) {}
+  constructor(
+    private readonly metaProductoService: MetaProductoService,
+    private readonly auditoriaService: PlanIndicativoAuditoriaService,
+  ) {}
 
   @Get()
   @Roles('superadmin', 'admin')
@@ -39,8 +45,12 @@ export class MetaProductoController {
   @Roles('superadmin', 'admin')
   async create(
     @Body(CreateMetaProductoPipe) createRequest: MetaProductoRequest,
+    @Req() req: Request,
   ) {
-    return await this.metaProductoService.create(createRequest);
+    const result = await this.metaProductoService.create(createRequest);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'meta_producto', 'INSERT');
+    return result;
   }
 
   @Patch(':id')
@@ -48,13 +58,20 @@ export class MetaProductoController {
   async update(
     @Param('id', ValidateIdPipe) id: number,
     @Body(CreateMetaProductoPipe) updateRequest: MetaProductoRequest,
+    @Req() req: Request,
   ) {
-    return await this.metaProductoService.update(id, updateRequest);
+    const result = await this.metaProductoService.update(id, updateRequest);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'meta_producto', 'UPDATE');
+    return result;
   }
 
   @Delete(':id')
   @Roles('superadmin', 'admin')
-  async delete(@Param('id', ValidateIdPipe) id: number) {
-    return await this.metaProductoService.delete(id);
+  async delete(@Param('id', ValidateIdPipe) id: number, @Req() req: Request) {
+    const result = await this.metaProductoService.delete(id);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'meta_producto', 'DELETE');
+    return result;
   }
 }

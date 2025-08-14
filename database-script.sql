@@ -648,3 +648,92 @@ CREATE TRIGGER update_enfoque_territorial_updated_at
     BEFORE UPDATE ON enfoque_territorial
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- ================================================================
+-- AUDITORÍA PLAN INDICATIVO
+-- ================================================================
+
+-- Tabla de historial para snapshots del Plan Indicativo
+CREATE TABLE IF NOT EXISTS plan_indicativo_historial (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER,
+    triggered_table TEXT NOT NULL,
+    accion TEXT NOT NULL, -- INSERT | UPDATE | DELETE
+    fecha_cambio TIMESTAMPTZ DEFAULT NOW(),
+    snapshot JSONB NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_pi_historial_fecha ON plan_indicativo_historial(fecha_cambio);
+CREATE INDEX IF NOT EXISTS idx_pi_historial_usuario ON plan_indicativo_historial(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_pi_historial_accion ON plan_indicativo_historial(accion);
+
+-- Alinear tipo con usuarios.id (BIGINT) y crear FK
+ALTER TABLE plan_indicativo_historial
+    ALTER COLUMN usuario_id TYPE BIGINT USING usuario_id::BIGINT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_pi_historial_usuario'
+          AND table_name = 'plan_indicativo_historial'
+    ) THEN
+        ALTER TABLE plan_indicativo_historial
+            ADD CONSTRAINT fk_pi_historial_usuario FOREIGN KEY (usuario_id)
+            REFERENCES usuarios(id);
+    END IF;
+END $$;
+
+-- Función para capturar el snapshot completo del Plan Indicativo
+CREATE OR REPLACE FUNCTION capturar_snapshot_plan_indicativo(
+    p_usuario_id BIGINT,
+    p_triggered_table TEXT,
+    p_accion TEXT
+) RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_snapshot JSONB;
+BEGIN
+    -- Construir snapshot con las 6 tablas requeridas
+    v_snapshot := jsonb_build_object(
+        'linea_estrategica', (
+            SELECT COALESCE(jsonb_agg(to_jsonb(le) - 'xmin'), '[]'::jsonb)
+            FROM linea_estrategica le
+        ),
+        'programa', (
+            SELECT COALESCE(jsonb_agg(to_jsonb(p) - 'xmin'), '[]'::jsonb)
+            FROM programa p
+        ),
+        'meta_resultado', (
+            SELECT COALESCE(jsonb_agg(to_jsonb(mr) - 'xmin'), '[]'::jsonb)
+            FROM meta_resultado mr
+        ),
+        'meta_producto', (
+            SELECT COALESCE(jsonb_agg(to_jsonb(mp) - 'xmin'), '[]'::jsonb)
+            FROM meta_producto mp
+        ),
+        'programacion_financiera', (
+            SELECT COALESCE(jsonb_agg(to_jsonb(pf) - 'xmin'), '[]'::jsonb)
+            FROM programacion_financiera pf
+        ),
+        'programacion_fisica', (
+            SELECT COALESCE(jsonb_agg(to_jsonb(pfis) - 'xmin'), '[]'::jsonb)
+            FROM programacion_fisica pfis
+        )
+    );
+
+    -- Insertar en historial
+    INSERT INTO plan_indicativo_historial(
+        usuario_id,
+        triggered_table,
+        accion,
+        snapshot
+    ) VALUES (
+        p_usuario_id,
+        p_triggered_table,
+        UPPER(p_accion),
+        v_snapshot
+    );
+END;
+$$;
+
