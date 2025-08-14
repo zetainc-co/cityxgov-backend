@@ -43,6 +43,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
       unidad_medida,
       unidad_medida_indicador_producto,
       nombre_indicador,
+      codigo_indicador_mga,
     } = value;
 
     // Validar campos requeridos
@@ -72,6 +73,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
       unidad_medida: unidad_medida?.trim() || '',
       unidad_medida_indicador_producto: unidad_medida_indicador_producto?.trim() || '',
       nombre_indicador: nombre_indicador?.trim() || '',
+      codigo_indicador_mga: Number(codigo_indicador_mga),
     };
   }
 
@@ -90,6 +92,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
       'codigo_programa',
       'codigo_producto',
       'codigo_sector',
+      'codigo_indicador_mga',
     ];
 
     const missingFields = requiredFields.filter((field) => {
@@ -116,6 +119,7 @@ export class CreateMetaProductoPipe implements PipeTransform {
       'caracterizacion_mga_id',
       'area_id',
       'ods_id',
+      'codigo_indicador_mga',
     ];
 
     numericFields.forEach((field) => {

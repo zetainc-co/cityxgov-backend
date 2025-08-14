@@ -148,7 +148,7 @@ export class PlanIndicativoAuditoriaService {
             worksheet.getCell(`P${currentRow}`).value = mp?.instrumento_planeacion || '';
 
             worksheet.getCell(`Q${currentRow}`).value = mp?.nombre || '';
-            const codigoIndicadorMGA = (mp as any)?.codigo_indicador ?? mga?.codigo_indicador ?? '';
+            const codigoIndicadorMGA = (mp as any)?.codigo_indicador_mga ?? '';
             const cellR = worksheet.getCell(`R${currentRow}`);
             cellR.value = codigoIndicadorMGA !== '' && codigoIndicadorMGA !== null && codigoIndicadorMGA !== undefined
                 ? String(codigoIndicadorMGA)
@@ -160,7 +160,6 @@ export class PlanIndicativoAuditoriaService {
             worksheet.getCell(`V${currentRow}`).value = mp?.linea_base ?? '';
             worksheet.getCell(`W${currentRow}`).value = mp?.meta_numerica ?? '';
             worksheet.getCell(`X${currentRow}`).value = mp?.orientacion || '';
-            worksheet.getCell(`Y${currentRow}`).value = '';
 
             // Marcar dinámicamente enfoques poblacionales seleccionados
             if (Array.isArray(mp?.enfoque_poblacional_ids)) {
@@ -205,11 +204,10 @@ export class PlanIndicativoAuditoriaService {
             'Programa Plan Municipal de Desarrollo 2024 - 2028', 'Cód. Sector MGA',
             'Cód. Programa MGA', 'ODS', 'Cód. Producto MGA', 'Instrumento de Planeación',
             'Producto PMD', 'Cód. Indicador MGA', 'Indicador Producto', 'Unidad de Medida',
-            'Unidad de Medida MGA', 'Línea Base', 'Meta 2028', 'Orientación de la Meta',
-            'Enfoque Derechos Humanos'
+            'Unidad de Medida MGA', 'Línea Base', 'Meta 2028', 'Orientación de la Meta'
         ];
 
-        const mainCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y'];
+        const mainCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X'];
 
         mainHeaders.forEach((text, idx) => {
             const cell = ws.getCell(`${mainCols[idx]}3`);
