@@ -23,6 +23,7 @@ import { PoaiModule } from './modules/poai/poai.module';
 import { BancoProyectosModule } from './modules/banco-proyectos/banco-proyectos.module';
 import { TopesPresupuestalesModule } from './modules/topes-presupuestales/topes-presupuestales.module';
 import { ReportesPoaiModule } from './modules/reportes_poai/reportes_poai.module';
+import { PlanIndicativoAuditoriaModule } from './modules/plan_indicativo_auditoria/plan_indicativo_auditoria.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ReportesPoaiModule } from './modules/reportes_poai/reportes_poai.module
     BancoProyectosModule,
     TopesPresupuestalesModule,
     ReportesPoaiModule,
+    PlanIndicativoAuditoriaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

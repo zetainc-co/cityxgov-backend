@@ -199,6 +199,21 @@ export class MetaProductoService {
       }
 
       // Crear meta_producto
+      // Derivar valores desde la MGA seleccionada (fallbacks)
+      let mgaDefaults: { codigo_indicador?: number | null; unidad_medida_indicador_producto?: string | null } = {};
+      try {
+        const { data: mgaRef } = await this.supabaseService.clientAdmin
+          .from('caracterizacion_mga')
+          .select('codigo_indicador, unidad_medida_indicador_producto')
+          .eq('id', createRequest.caracterizacion_mga_id)
+          .maybeSingle();
+        if (mgaRef) {
+          mgaDefaults.codigo_indicador = mgaRef.codigo_indicador ?? null;
+          mgaDefaults.unidad_medida_indicador_producto = (mgaRef.unidad_medida_indicador_producto ?? null) as any;
+        }
+      } catch {}
+      const resolvedCodigoIndicador = createRequest.codigo_indicador_mga ?? (mgaDefaults.codigo_indicador ?? null);
+      const resolvedUmi = (createRequest.unidad_medida_indicador_producto || mgaDefaults.unidad_medida_indicador_producto || '').toString().trim();
       const { data: metaProducto, error: createError } =
         await this.supabaseService.clientAdmin
           .from('meta_producto')
@@ -216,8 +231,9 @@ export class MetaProductoService {
             codigo_producto: createRequest.codigo_producto?.trim() || '',
             codigo_sector: createRequest.codigo_sector?.trim() || '',
             unidad_medida: createRequest.unidad_medida?.trim() || '',
-            unidad_medida_indicador_producto: createRequest.unidad_medida_indicador_producto?.trim() || '',
+            unidad_medida_indicador_producto: resolvedUmi,
             nombre_indicador: createRequest.nombre_indicador?.trim() || '',
+            codigo_indicador_mga: resolvedCodigoIndicador !== null && resolvedCodigoIndicador !== undefined ? Number(resolvedCodigoIndicador) : null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
@@ -393,7 +409,8 @@ export class MetaProductoService {
         existing.codigo_sector !== (updateRequest.codigo_sector?.trim() || '') ||
         existing.unidad_medida !== (updateRequest.unidad_medida?.trim() || '') ||
         existing.unidad_medida_indicador_producto !== (updateRequest.unidad_medida_indicador_producto?.trim() || '') ||
-        existing.nombre_indicador !== (updateRequest.nombre_indicador?.trim() || '');
+        existing.nombre_indicador !== (updateRequest.nombre_indicador?.trim() || '') ||
+        Number(existing.codigo_indicador_mga ?? 0) !== Number(updateRequest.codigo_indicador_mga ?? existing.codigo_indicador_mga ?? 0);
 
       // Obtener enfoques poblacionales actuales para comparar
       const { data: currentEnfoques, error: currentEnfoquesError } =
@@ -459,15 +476,28 @@ export class MetaProductoService {
         };
 
         return {
-          status: false,
-          message: 'No se detectaron cambios en el meta producto',
-          error: 'Sin cambios',
+          status: true,
+          message: 'Meta producto actualizado correctamente (sin cambios detectados)',
           data: [result],
         };
       }
 
       // Actualizar meta_producto solo si hay cambios básicos
       if (hasBasicChanges) {
+        // Derivar defaults desde MGA si no vienen en request
+        let updateResolvedCodigo = updateRequest.codigo_indicador_mga;
+        let updateResolvedUmi = updateRequest.unidad_medida_indicador_producto;
+        if (!updateResolvedCodigo || !updateResolvedUmi) {
+          try {
+            const { data: mgaRef } = await this.supabaseService.clientAdmin
+              .from('caracterizacion_mga')
+              .select('codigo_indicador, unidad_medida_indicador_producto')
+              .eq('id', updateRequest.caracterizacion_mga_id)
+              .maybeSingle();
+            if (!updateResolvedCodigo && mgaRef?.codigo_indicador) updateResolvedCodigo = Number(mgaRef.codigo_indicador);
+            if (!updateResolvedUmi && mgaRef?.unidad_medida_indicador_producto) updateResolvedUmi = String(mgaRef.unidad_medida_indicador_producto);
+          } catch {}
+        }
         const { data: updatedData, error: updatedError } =
           await this.supabaseService.clientAdmin
             .from('meta_producto')
@@ -486,8 +516,9 @@ export class MetaProductoService {
               codigo_producto: updateRequest.codigo_producto?.trim() || '',
               codigo_sector: updateRequest.codigo_sector?.trim() || '',
               unidad_medida: updateRequest.unidad_medida?.trim() || '',
-              unidad_medida_indicador_producto: updateRequest.unidad_medida_indicador_producto?.trim() || '',
+              unidad_medida_indicador_producto: (updateResolvedUmi || '').toString().trim(),
               nombre_indicador: updateRequest.nombre_indicador?.trim() || '',
+              codigo_indicador_mga: updateResolvedCodigo !== undefined && updateResolvedCodigo !== null ? Number(updateResolvedCodigo) : existing.codigo_indicador_mga ?? null,
               updated_at: new Date().toISOString(),
             })
             .eq('id', id)
@@ -531,6 +562,8 @@ export class MetaProductoService {
         );
       }
 
+      console.log('🔍 Meta producto actualizado:', metaProductoUpdated);
+
       // Obtener solo los IDs de meta_resultados relacionados
       const { data: metaResultados, error: metaResultadosError } =
         await this.supabaseService.clientAdmin
@@ -567,6 +600,12 @@ export class MetaProductoService {
         enfoque_poblacional_ids:
           enfoquesPoblacionales?.map((ep) => ep.enfoque_poblacional_id) || [],
       };
+
+      console.log('✅ Resultado final del update:', {
+        status: true,
+        message: 'Meta producto actualizado correctamente',
+        data: [result],
+      });
 
       return {
         status: true,

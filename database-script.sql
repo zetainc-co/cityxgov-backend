@@ -648,3 +648,123 @@ CREATE TRIGGER update_enfoque_territorial_updated_at
     BEFORE UPDATE ON enfoque_territorial
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- ================================================================
+-- AUDITORÍA PLAN INDICATIVO
+-- ================================================================
+
+-- Tabla de historial para snapshots del Plan Indicativo
+CREATE TABLE IF NOT EXISTS plan_indicativo_historial (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER,
+    triggered_table TEXT NOT NULL,
+    accion TEXT NOT NULL, -- INSERT | UPDATE | DELETE
+    fecha_cambio TIMESTAMPTZ DEFAULT NOW(),
+    snapshot JSONB NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_pi_historial_fecha ON plan_indicativo_historial(fecha_cambio);
+CREATE INDEX IF NOT EXISTS idx_pi_historial_usuario ON plan_indicativo_historial(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_pi_historial_accion ON plan_indicativo_historial(accion);
+
+-- Alinear tipo con usuarios.id (BIGINT) y crear FK
+ALTER TABLE plan_indicativo_historial
+    ALTER COLUMN usuario_id TYPE BIGINT USING usuario_id::BIGINT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_pi_historial_usuario'
+          AND table_name = 'plan_indicativo_historial'
+    ) THEN
+        ALTER TABLE plan_indicativo_historial
+            ADD CONSTRAINT fk_pi_historial_usuario FOREIGN KEY (usuario_id)
+            REFERENCES usuarios(id);
+    END IF;
+END $$;
+
+-- Función MEJORADA para capturar el snapshot completo del Plan Indicativo
+-- Ahora captura TODOS los campos de cada tabla, incluyendo NULL/vacíos
+CREATE OR REPLACE FUNCTION capturar_snapshot_plan_indicativo(
+    p_usuario_id BIGINT,
+    p_triggered_table TEXT,
+    p_accion TEXT
+) RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_snapshot JSONB;
+    v_table_name TEXT;
+    v_columns TEXT[];
+    v_column TEXT;
+    v_select_columns TEXT := '';
+    v_sql TEXT;
+    v_result JSONB;
+BEGIN
+    -- Construir snapshot con TODAS las tablas y TODOS sus campos
+    v_snapshot := jsonb_build_object();
+
+    -- Lista de tablas a capturar
+    FOR v_table_name IN
+        SELECT unnest(ARRAY[
+            'linea_estrategica',
+            'programa',
+            'meta_resultado',
+            'meta_producto',
+            'programacion_financiera',
+            'programacion_fisica',
+            'area',
+            'ods',
+            'caracterizacion_mga',
+            'fuentes_financiacion',
+            'enfoque_poblacional',
+            'meta_producto_enfoque_poblacional'
+        ])
+    LOOP
+        -- Obtener TODAS las columnas de la tabla
+        SELECT array_agg(column_name::TEXT ORDER BY ordinal_position)
+        INTO v_columns
+        FROM information_schema.columns
+        WHERE table_name = v_table_name
+        AND table_schema = 'public';
+
+        -- Construir SELECT con TODAS las columnas
+        v_select_columns := '';
+        FOR v_column IN SELECT unnest(v_columns)
+        LOOP
+            IF v_select_columns != '' THEN
+                v_select_columns := v_select_columns || ', ';
+            END IF;
+            v_select_columns := v_select_columns || quote_ident(v_column);
+        END LOOP;
+
+        -- Ejecutar query dinámico para capturar TODOS los campos
+        v_sql := 'SELECT COALESCE(jsonb_agg(to_jsonb(t) - ''xmin''), ''[]''::jsonb) FROM ' || quote_ident(v_table_name) || ' t';
+
+        EXECUTE v_sql INTO v_result;
+
+        -- Agregar al snapshot
+        v_snapshot := v_snapshot || jsonb_build_object(v_table_name, v_result);
+    END LOOP;
+
+    -- Insertar en historial
+    INSERT INTO plan_indicativo_historial(
+        usuario_id,
+        triggered_table,
+        accion,
+        snapshot
+    ) VALUES (
+        p_usuario_id,
+        p_triggered_table,
+        UPPER(p_accion),
+        v_snapshot
+    );
+
+    -- Log para debugging (opcional)
+    RAISE NOTICE 'Snapshot capturado para tabla % con acción %. Total de tablas: %',
+        p_triggered_table,
+        p_accion,
+        jsonb_object_keys(v_snapshot);
+END;
+$$;
+

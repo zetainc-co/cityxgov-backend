@@ -9,9 +9,10 @@ import {
   ValidateIdPipe,
   UpdateMultipleProgramacionFisicaPipe,
 } from './pipes/programacion_fisica.pipe';
+import { PlanIndicativoAuditoriaModule } from '../plan_indicativo_auditoria/plan_indicativo_auditoria.module';
 
 @Module({
-  imports: [SupabaseModule, FuentesFinanciacionModule, MetaProductoModule],
+  imports: [SupabaseModule, FuentesFinanciacionModule, MetaProductoModule, PlanIndicativoAuditoriaModule],
   providers: [
     ProgramacionFisicaService,
     CreateProgramacionFisicaPipe,
