@@ -17,12 +17,16 @@ import { Roles } from '../rol/decorator/roles.decorator';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { ProgramacionFinancieraRequest } from './dto/programacion_financiera.dto';
 import { ProgramacionFinancieraService } from './programacion_financiera.service';
+import { Request } from 'express';
+import { Req } from '@nestjs/common';
+import { PlanIndicativoAuditoriaService } from '../plan_indicativo_auditoria/plan_indicativo_auditoria.service';
 
 @Controller('programacion-financiera')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProgramacionFinancieraController {
   constructor(
     private readonly programacionFinancieraService: ProgramacionFinancieraService,
+    private readonly auditoriaService: PlanIndicativoAuditoriaService,
   ) {}
 
   // Obtiene todas las programaciones financieras
@@ -52,8 +56,12 @@ export class ProgramacionFinancieraController {
   async create(
     @Body(CreateProgramacionFinancieraPipe)
     createRequest: ProgramacionFinancieraRequest,
+    @Req() req: Request,
   ) {
-    return this.programacionFinancieraService.create(createRequest);
+    const result = await this.programacionFinancieraService.create(createRequest);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_financiera', 'INSERT');
+    return result;
   }
 
   // Actualiza múltiples programaciones financieras POAI
@@ -71,8 +79,12 @@ export class ProgramacionFinancieraController {
   async updatePeriodo(
     @Param('periodo') periodo: string,
     @Body() requests: ProgramacionFinancieraRequest[],
+    @Req() req: Request,
   ) {
-    return this.programacionFinancieraService.updatePeriodo(+periodo, requests);
+    const result = await this.programacionFinancieraService.updatePeriodo(+periodo, requests);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_financiera', 'UPDATE');
+    return result;
   }
 
   // Actualiza una programacion financiera Plan Indicativo
@@ -82,14 +94,21 @@ export class ProgramacionFinancieraController {
     @Param('id', ValidateIdPipe) id: number,
     @Body(CreateProgramacionFinancieraPipe)
     updateRequest: ProgramacionFinancieraRequest,
+    @Req() req: Request,
   ) {
-    return this.programacionFinancieraService.update(id, updateRequest);
+    const result = await this.programacionFinancieraService.update(id, updateRequest);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_financiera', 'UPDATE');
+    return result;
   }
 
   // Elimina una programacion financiera
   @Delete(':id')
   @Roles('superadmin', 'admin')
-  async delete(@Param('id', ValidateIdPipe) id: number) {
-    return this.programacionFinancieraService.delete(id);
+  async delete(@Param('id', ValidateIdPipe) id: number, @Req() req: Request) {
+    const result = await this.programacionFinancieraService.delete(id);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_financiera', 'DELETE');
+    return result;
   }
 }

@@ -19,12 +19,16 @@ import {
   ValidatePeriodoPipe,
   UpdateMultipleProgramacionFisicaPipe,
 } from './pipes/programacion_fisica.pipe';
+import { Request } from 'express';
+import { Req } from '@nestjs/common';
+import { PlanIndicativoAuditoriaService } from '../plan_indicativo_auditoria/plan_indicativo_auditoria.service';
 
 @Controller('programacion-fisica')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProgramacionFisicaController {
   constructor(
     private readonly programacionFisicaService: ProgramacionFisicaService,
+    private readonly auditoriaService: PlanIndicativoAuditoriaService,
   ) {}
 
   @Get()
@@ -50,8 +54,12 @@ export class ProgramacionFisicaController {
   async create(
     @Body(CreateProgramacionFisicaPipe)
     createRequest: ProgramacionFisicaRequest,
+    @Req() req: Request,
   ) {
-    return this.programacionFisicaService.create(createRequest);
+    const result = await this.programacionFisicaService.create(createRequest);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_fisica', 'INSERT');
+    return result;
   }
 
   // Actualiza programaciones físicas por periodo específico
@@ -61,8 +69,12 @@ export class ProgramacionFisicaController {
     @Param('periodo', ValidatePeriodoPipe) periodo: number,
     @Body(UpdateMultipleProgramacionFisicaPipe)
     requests: ProgramacionFisicaRequest[],
+    @Req() req: Request,
   ) {
-    return this.programacionFisicaService.updatePeriodo(periodo, requests);
+    const result = await this.programacionFisicaService.updatePeriodo(periodo, requests);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_fisica', 'UPDATE');
+    return result;
   }
 
   @Patch(':id')
@@ -71,13 +83,20 @@ export class ProgramacionFisicaController {
     @Param('id', ValidateIdPipe) id: number,
     @Body(CreateProgramacionFisicaPipe)
     updateRequest: ProgramacionFisicaRequest,
+    @Req() req: Request,
   ) {
-    return this.programacionFisicaService.update(id, updateRequest);
+    const result = await this.programacionFisicaService.update(id, updateRequest);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_fisica', 'UPDATE');
+    return result;
   }
 
   @Delete(':id')
   @Roles('superadmin', 'admin')
-  async delete(@Param('id', ValidateIdPipe) id: number) {
-    return this.programacionFisicaService.delete(id);
+  async delete(@Param('id', ValidateIdPipe) id: number, @Req() req: Request) {
+    const result = await this.programacionFisicaService.delete(id);
+    const user = (req as any).user;
+    await this.auditoriaService.capturarSnapshot(user?.id ?? null, 'programacion_fisica', 'DELETE');
+    return result;
   }
 }

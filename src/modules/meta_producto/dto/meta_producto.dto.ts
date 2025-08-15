@@ -14,7 +14,8 @@ export interface MetaProducto {
   codigo_producto: string; //MGA
   codigo_sector: string; //MGA
   unidad_medida_indicador_producto: string; //MGA
-  nombre_indicador: string;
+  codigo_indicador_mga: number; //MGA
+  nombre_indicador: string; //MGA
   created_at: string;
   updated_at: string;
 }
@@ -36,7 +37,8 @@ export interface MetaProductoRequest {
   codigo_sector: string;
   unidad_medida?: string; // Opcional
   unidad_medida_indicador_producto?: string; // Opcional
-  nombre_indicador?: string; // Opcional
+  codigo_indicador_mga?: number; //MGA
+  nombre_indicador?: string;
 }
 
 export interface MetaProductoResponse {
