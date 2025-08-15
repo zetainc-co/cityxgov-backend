@@ -476,9 +476,8 @@ export class MetaProductoService {
         };
 
         return {
-          status: false,
-          message: 'No se detectaron cambios en el meta producto',
-          error: 'Sin cambios',
+          status: true,
+          message: 'Meta producto actualizado correctamente (sin cambios detectados)',
           data: [result],
         };
       }
@@ -563,6 +562,8 @@ export class MetaProductoService {
         );
       }
 
+      console.log('🔍 Meta producto actualizado:', metaProductoUpdated);
+
       // Obtener solo los IDs de meta_resultados relacionados
       const { data: metaResultados, error: metaResultadosError } =
         await this.supabaseService.clientAdmin
@@ -599,6 +600,12 @@ export class MetaProductoService {
         enfoque_poblacional_ids:
           enfoquesPoblacionales?.map((ep) => ep.enfoque_poblacional_id) || [],
       };
+
+      console.log('✅ Resultado final del update:', {
+        status: true,
+        message: 'Meta producto actualizado correctamente',
+        data: [result],
+      });
 
       return {
         status: true,

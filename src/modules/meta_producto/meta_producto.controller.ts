@@ -53,7 +53,7 @@ export class MetaProductoController {
     return result;
   }
 
-  @Patch(':id')
+    @Patch(':id')
   @Roles('superadmin', 'admin')
   async update(
     @Param('id', ValidateIdPipe) id: number,

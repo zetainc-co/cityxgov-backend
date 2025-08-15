@@ -1,6 +1,24 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from 'src/config/supabase/supabase.service';
 import * as ExcelJS from 'exceljs';
+import {
+    ListarSnapshotsDto,
+    ObtenerSnapshotDto,
+    GenerarExcelSnapshotDto,
+    CapturarSnapshotDto,
+    ListarSnapshotsResponseDto,
+    ObtenerSnapshotResponseDto,
+    CapturarSnapshotResponseDto,
+    HeadersInfoDto,
+    FuenteFinanciacionDto,
+    EnfoquePoblacionalDto,
+    AreaDto,
+    MetaResultadoDto,
+    LineaDto,
+    CaracterizacionMgaDto,
+    OdsDto,
+    ProgramaDto
+} from './dto/plan_indicativo_auditoria.dto';
 
 @Injectable()
 export class PlanIndicativoAuditoriaService {
@@ -12,15 +30,24 @@ export class PlanIndicativoAuditoriaService {
         usuarioId: number | null,
         triggeredTable: string,
         accion: 'INSERT' | 'UPDATE' | 'DELETE',
-    ) {
+    ): Promise<CapturarSnapshotResponseDto> {
         try {
+            console.log(`🔄 Capturando snapshot para tabla: ${triggeredTable}, acción: ${accion}, usuario: ${usuarioId}`);
+
             const { error } = await this.supabaseService.clientAdmin.rpc(
                 'capturar_snapshot_plan_indicativo',
                 { p_usuario_id: usuarioId, p_triggered_table: triggeredTable, p_accion: accion },
             );
-            if (error) throw new InternalServerErrorException(error.message);
+
+            if (error) {
+                console.error(`❌ Error capturando snapshot:`, error);
+                throw new InternalServerErrorException(error.message);
+            }
+
+            console.log(`✅ Snapshot capturado exitosamente para tabla: ${triggeredTable}`);
             return { status: true };
         } catch (e) {
+            console.error(`💥 Excepción capturando snapshot:`, e);
             return { status: false, error: (e as any).message };
         }
     }
@@ -34,33 +61,54 @@ export class PlanIndicativoAuditoriaService {
         titleCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
     }
 
-    async listarSnapshots({ fechaDesde, fechaHasta }: { fechaDesde?: string; fechaHasta?: string }) {
-        let query = this.supabaseService.clientAdmin
-            .from('plan_indicativo_historial')
-            .select(`
-        id, usuario_id, triggered_table, accion, fecha_cambio, snapshot,
-        usuario:usuarios(id, nombre, apellido, correo, identificacion)
-      `)
-            .order('fecha_cambio', { ascending: false });
-        if (fechaDesde) query = query.gte('fecha_cambio', fechaDesde);
-        if (fechaHasta) query = query.lte('fecha_cambio', fechaHasta);
-        const { data, error } = await query;
-        if (error) throw new InternalServerErrorException(error.message);
-        return { status: true, data };
+            async listarSnapshots({ fechaDesde, fechaHasta }: ListarSnapshotsDto): Promise<ListarSnapshotsResponseDto> {
+        try {
+            let query = this.supabaseService.clientAdmin
+                .from('plan_indicativo_historial')
+                .select(`
+                    id, usuario_id, triggered_table, accion, fecha_cambio,
+                    usuario:usuarios(id, nombre, apellido, correo, identificacion)
+                `)
+                .order('fecha_cambio', { ascending: false })
+                .limit(100); // Limitar a 100 registros máximo
+
+            if (fechaDesde) query = query.gte('fecha_cambio', fechaDesde);
+            if (fechaHasta) query = query.lte('fecha_cambio', fechaHasta);
+
+            const { data, error } = await query;
+
+            if (error) {
+                throw new InternalServerErrorException(error.message);
+            }
+
+            return { status: true, data: data as any };
+        } catch (error) {
+            throw error;
+        }
     }
 
-    async obtenerSnapshot(id: number) {
-        const { data, error } = await this.supabaseService.clientAdmin
-            .from('plan_indicativo_historial')
-            .select(`
-        id, usuario_id, triggered_table, accion, fecha_cambio, snapshot,
-        usuario:usuarios(id, nombre, apellido, correo, identificacion)
-      `)
-            .eq('id', id)
-            .single();
-        if (error) throw new InternalServerErrorException(error.message);
-        return { status: true, data };
+        async obtenerSnapshot(id: number): Promise<ObtenerSnapshotResponseDto> {
+        try {
+            const { data, error } = await this.supabaseService.clientAdmin
+                .from('plan_indicativo_historial')
+                .select(`
+                    id, usuario_id, triggered_table, accion, fecha_cambio, snapshot,
+                    usuario:usuarios(id, nombre, apellido, correo, identificacion)
+                `)
+                .eq('id', id)
+                .single();
+
+            if (error) {
+                throw new InternalServerErrorException(error.message);
+            }
+
+            return { status: true, data: data as any };
+        } catch (error) {
+            throw error;
+        }
     }
+
+
 
     // Método público requerido por el controlador
     async generarExcelSnapshot(id: number): Promise<Buffer> {
@@ -203,7 +251,7 @@ export class PlanIndicativoAuditoriaService {
     }
 
 
-    private setupMainHeaders(ws: ExcelJS.Worksheet, fuentesFinanciacion: { id: number; nombre: string }[]): { lastCol: string; finStart?: string; finEnd?: string; totalCol?: string } {
+    private setupMainHeaders(ws: ExcelJS.Worksheet, fuentesFinanciacion: FuenteFinanciacionDto[]): HeadersInfoDto {
         // === PRIMERA FILA DE HEADERS (fila 3) - Headers principales ===
         const mainHeaders = [
             'N° Meta', 'Dependencia Líder', 'Eje Plan Municipal de Desarrollo 2024 - 2028',
@@ -233,7 +281,7 @@ export class PlanIndicativoAuditoriaService {
         enfoqueCell.value = 'Enfoque Poblacional (Sí aplica)';
         enfoqueCell.font = { size: 12, bold: true, name: 'Arial' } as any;
         enfoqueCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
-        enfoqueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        enfoqueCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F5E6' } } as any;
         enfoqueCell.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },
@@ -250,7 +298,7 @@ export class PlanIndicativoAuditoriaService {
         sectorCell.value = 'Sector';
         sectorCell.font = { size: 12, bold: true, name: 'Arial' } as any;
         sectorCell.alignment = { horizontal: 'center', vertical: 'middle' } as any;
-        sectorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        sectorCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F5E6' } } as any;
         sectorCell.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },
@@ -267,7 +315,7 @@ export class PlanIndicativoAuditoriaService {
         progCell.value = 'Programación Física Meta Producto';
         progCell.font = { size: 12, bold: true, name: 'Arial' } as any;
         progCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
-        progCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        progCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F5E6' } } as any;
         progCell.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },
@@ -285,7 +333,7 @@ export class PlanIndicativoAuditoriaService {
             this.applySubHeaderStyle(cell);
             enfoqueColumns.push({ col: enfoqueStart, id: -1 });
         } else {
-            enfoques.forEach((e: { id: number; nombre: string }, idx: number) => {
+            enfoques.forEach((e: EnfoquePoblacionalDto, idx: number) => {
                 const col = this.numberToColumn(this.columnToNumber(enfoqueStart) + idx);
                 const cell = ws.getCell(`${col}4`);
                 cell.value = e.nombre;
@@ -338,7 +386,7 @@ export class PlanIndicativoAuditoriaService {
         segFisicaCell.value = 'Seguimiento Ejecución Física Meta Producto';
         segFisicaCell.font = { size: 12, bold: true, name: 'Arial' } as any;
         segFisicaCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
-        segFisicaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF90EE90' } } as any;
+        segFisicaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F5E6' } } as any;
         segFisicaCell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } } as any;
         const SeguiFisicoCols = Array.from({ length: SeguiFisico.length }, (_, i) => this.numberToColumn(this.columnToNumber(segStart) + i));
 
@@ -372,7 +420,7 @@ export class PlanIndicativoAuditoriaService {
             ws.mergeCells(`${currStart}3:${endCol}3`);
             const headerCell = ws.getCell(`${currStart}3`);
             headerCell.value = `Fuentes de Financiación ${ano}`;
-            this.applyHeaderStyle(headerCell, 'FF90EE90');
+            this.applyHeaderStyle(headerCell, 'FFE6F5E6');
 
             if (fuentesFinanciacion.length === 0) {
                 const cell = ws.getCell(`${currStart}4`);
@@ -400,7 +448,7 @@ export class PlanIndicativoAuditoriaService {
         ws.mergeCells(`${totalCol}3:${totalCol}4`);
         const totalHeaderCell = ws.getCell(`${totalCol}3`);
         totalHeaderCell.value = 'Total Cuatrienio 2024 - 2027';
-        this.applyHeaderStyle(totalHeaderCell, 'FF90EE90');
+        this.applyHeaderStyle(totalHeaderCell, 'FFE6F5E6');
         ws.getColumn(totalCol).width = 18;
         lastCol = totalCol;
 
@@ -429,7 +477,7 @@ export class PlanIndicativoAuditoriaService {
         } as any;
     }
 
-    private applyHeaderStyle(cell: ExcelJS.Cell, bgColor = 'FFE6E6E6') {
+    private applyHeaderStyle(cell: ExcelJS.Cell, bgColor = 'FFE6F5E6') {
         cell.font = { size: 10, bold: true, name: 'Arial' } as any;
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true } as any;
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } } as any;
@@ -458,7 +506,7 @@ export class PlanIndicativoAuditoriaService {
     private columnToNumber(col: string) { let r = 0; for (let i = 0; i < col.length; i++) r = r * 26 + (col.charCodeAt(i) - 64); return r; }
     private numberToColumn(num: number) { let s = ''; while (num > 0) { const m = (num - 1) % 26; s = String.fromCharCode(65 + m) + s; num = Math.floor((num - 1) / 26); } return s; }
 
-    private async fetchFuentesFinanciacion(): Promise<{ id: number; nombre: string }[]> {
+    private async fetchFuentesFinanciacion(): Promise<FuenteFinanciacionDto[]> {
         const { data } = await this.supabaseService.clientAdmin
             .from('fuentes_financiacion')
             .select('id, nombre')
@@ -479,7 +527,7 @@ export class PlanIndicativoAuditoriaService {
         return map;
     }
 
-    private async fetchMetaResultadoYLineas(snapshot: any) {
+    private async fetchMetaResultadoYLineas(snapshot: any): Promise<{ metasByMetaProductoId: Map<number, number[]>; metaResultadoById: Map<number, MetaResultadoDto>; lineaById: Map<number, LineaDto> }> {
         const metas = Array.isArray(snapshot.meta_producto) ? snapshot.meta_producto : [];
         const metaIds = metas.map((m: any) => Number(m.id));
         const relacionesRes = await this.supabaseService.clientAdmin
@@ -579,9 +627,9 @@ export class PlanIndicativoAuditoriaService {
     }
 
     // Cache y fetch de Enfoque Poblacional
-    private cachedEnfoquePoblacional: { id: number; nombre: string }[] | null = null;
+    private cachedEnfoquePoblacional: EnfoquePoblacionalDto[] | null = null;
     private enfoquePoblacionalColumns: { col: string; id: number }[] = [];
-    private async fetchEnfoquePoblacional(): Promise<{ id: number; nombre: string }[]> {
+    private async fetchEnfoquePoblacional(): Promise<EnfoquePoblacionalDto[]> {
         if (this.cachedEnfoquePoblacional) return this.cachedEnfoquePoblacional;
         const { data } = await this.supabaseService.clientAdmin
             .from('enfoque_poblacional')

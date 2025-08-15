@@ -35,6 +35,7 @@ export const MODULOS_DISPONIBLES = [
       'metas-productos',
       'programacion-fisica',
       'programacion-financiera',
+      'reportes',
     ],
   },
   {
