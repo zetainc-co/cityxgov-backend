@@ -371,80 +371,9 @@ export class ReportesPoaiService {
     try {
       console.log(`🔍 Generando reporte para historial ID: ${historialId}`);
 
-      // Intentar usar la función almacenada primero
-      try {
-        const { data, error } = await this.supabaseService.clientAdmin.rpc('generar_reporte_poai_simple_excel', {
-          p_historial_id: historialId
-        });
-
-        console.log(`📊 Resultado de RPC:`, { data: data?.length || 0, error: error?.message });
-
-        if (error) {
-          console.error(`❌ Error en RPC:`, error);
-          throw new Error(`Error en consulta: ${error.message}`);
-        }
-
-        if (!data || data.length === 0) {
-          console.warn(`⚠️ No se encontraron datos para el historial ${historialId}`);
-        } else {
-          console.log(`✅ Datos obtenidos: ${data.length} filas`);
-        }
-
-        // Crear el Excel
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Reporte POAI');
-
-        // Definir headers manualmente para asegurar el orden
-        const headers = [
-          'N° Meta',
-          'Meta de Producto',
-          'Dependencia Responsable',
-          'Código del Producto',
-          'Eje PMD',
-          'Programa PMD',
-          'BPIN Proyecto',
-          'Proyecto',
-          'Pr. Vigencia 2024',
-          'Orientación de la Meta',
-          'Indicador de Producto',
-          'Actividad',
-          'Evidencia/Entregable',
-          'Recursos Financieros',
-          'Recursos Físicos',
-          'Recursos Humanos',
-          'Recursos Tecnológicos',
-          'Fecha de Inicio'
-        ];
-
-        // Agregar headers con formato
-        const headerRow = worksheet.addRow(headers);
-        headerRow.font = { bold: true };
-        headerRow.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFE0E0E0' }
-        };
-
-        // Agregar datos
-        data.forEach(row => {
-          const rowData = headers.map(header => row[header] || '');
-          worksheet.addRow(rowData);
-        });
-
-        // Ajustar ancho de columnas
-        worksheet.columns.forEach(column => {
-          column.width = 15;
-        });
-
-        // Convertir a buffer
-        const buffer = await workbook.xlsx.writeBuffer();
-        return Buffer.from(buffer);
-
-      } catch (rpcError) {
-        console.warn(`⚠️ Error con función RPC, usando método directo:`, rpcError.message);
-        // Si falla la función RPC, usar el método directo
-        return await this.generarReportePoaiDirecto(historialId);
-      }
+      // Como la función RPC no existe, usar directamente el método que sí funciona
+      console.log(`📊 Usando método directo para generar reporte`);
+      return await this.generarReportePoaiDirecto(historialId);
 
     } catch (error) {
       throw new Error(`Error generando reporte: ${error.message}`);
@@ -454,55 +383,6 @@ export class ReportesPoaiService {
   // Versión alternativa usando consulta directa (sin función almacenada)
   async generarReportePoaiDirecto(historialId: number): Promise<Buffer> {
     try {
-      const query = `
-        SELECT
-          ROW_NUMBER() OVER (ORDER BY mp.id) as "N° Meta",
-          mp.nombre as "Meta de Producto",
-          a.nombre as "Dependencia Responsable",
-          mp.codigo_producto as "Código del Producto",
-          '' as "Eje PMD",
-          mp.codigo_programa as "Programa PMD",
-          COALESCE(bp_elem->>'codigo_bpin', '') as "BPIN Proyecto",
-          COALESCE(bp_elem->>'nombre', '') as "Proyecto",
-          '' as "Pr. Vigencia 2024",
-          mp.orientacion as "Orientación de la Meta",
-          '' as "Indicador de Producto",
-          '' as "Actividad",
-          '' as "Evidencia/Entregable",
-          CASE
-            WHEN p.periodo = 1 THEN COALESCE((pf_elem->>'periodo_uno')::integer, 0)
-            WHEN p.periodo = 2 THEN COALESCE((pf_elem->>'periodo_dos')::integer, 0)
-            WHEN p.periodo = 3 THEN COALESCE((pf_elem->>'periodo_tres')::integer, 0)
-            WHEN p.periodo = 4 THEN COALESCE((pf_elem->>'periodo_cuatro')::integer, 0)
-            ELSE 0
-          END as "Recursos Financieros",
-          CASE
-            WHEN p.periodo = 1 THEN COALESCE((pfis_elem->>'periodo_uno')::integer, 0)
-            WHEN p.periodo = 2 THEN COALESCE((pfis_elem->>'periodo_dos')::integer, 0)
-            WHEN p.periodo = 3 THEN COALESCE((pfis_elem->>'periodo_tres')::integer, 0)
-            WHEN p.periodo = 4 THEN COALESCE((pfis_elem->>'periodo_cuatro')::integer, 0)
-            ELSE 0
-          END as "Recursos Físicos",
-          '' as "Recursos Humanos",
-          '' as "Recursos Tecnológicos",
-          '' as "Fecha de Inicio"
-        FROM poai_historial_cambios phc
-        INNER JOIN poai p ON phc.poai_id = p.id
-        CROSS JOIN jsonb_array_elements(phc.datos_poai->'programacion_financiera') pf_elem
-        INNER JOIN meta_producto mp ON mp.id = (pf_elem->>'meta_id')::integer
-        INNER JOIN area a ON mp.area_id = a.id
-        LEFT JOIN jsonb_array_elements(phc.datos_poai->'programacion_fisica') pfis_elem
-            ON (pfis_elem->>'meta_id')::integer = mp.id
-        LEFT JOIN jsonb_array_elements(phc.datos_poai->'banco_proyectos') bp_elem
-            ON EXISTS (
-                SELECT 1 FROM proyecto_metas pm
-                WHERE pm.proyecto_id = (bp_elem->>'id')::integer
-                AND pm.meta_producto_id = mp.id
-            )
-        WHERE phc.id = $1
-        ORDER BY mp.id
-      `;
-
       // Obtener datos del historial primero
       const { data: historialData, error: historialError } = await this.supabaseService.clientAdmin
         .from('poai_historial_cambios')
@@ -518,29 +398,61 @@ export class ReportesPoaiService {
       const datosPoai = historialData.datos_poai;
 
       console.log(`📊 Procesando historial ${historialId}, periodo: ${periodo}`);
+      console.log(`📊 Datos POAI disponibles:`, {
+        hasProgramacionFinanciera: !!datosPoai?.programacion_financiera,
+        hasProgramacionFisica: !!datosPoai?.programacion_fisica,
+        hasBancoProyectos: !!datosPoai?.banco_proyectos,
+        programacionFinancieraLength: datosPoai?.programacion_financiera?.length || 0,
+        programacionFisicaLength: datosPoai?.programacion_fisica?.length || 0,
+        bancoProyectosLength: datosPoai?.banco_proyectos?.length || 0
+      });
 
       // Crear datos del reporte manualmente
       const data: any[] = [];
       let rowNumber = 1;
 
       // Procesar programación financiera
-      if (datosPoai?.programacion_financiera) {
+      if (datosPoai?.programacion_financiera && datosPoai.programacion_financiera.length > 0) {
+        console.log(`📊 Procesando ${datosPoai.programacion_financiera.length} elementos de programación financiera`);
         for (const pf of datosPoai.programacion_financiera) {
-          // Obtener meta de producto
-          const { data: metaData } = await this.supabaseService.clientAdmin
+          console.log(`📊 Procesando meta_id: ${pf.meta_id}`);
+
+          // Obtener meta de producto con todas sus relaciones
+          const { data: metaData, error: metaError } = await this.supabaseService.clientAdmin
             .from('meta_producto')
             .select(`
               id,
               nombre,
-              codigo_producto,
+              meta_numerica,
+              unidad_medida,
+              unidad_medida_indicador_producto,
+              nombre_indicador,
               codigo_programa,
+              codigo_producto,
+              codigo_sector,
               orientacion,
-              area:area(nombre)
+              area:area(nombre),
+              ods:ods(nombre),
+              caracterizacion_mga:caracterizacion_mga(
+                sector,
+                programa,
+                producto,
+                descripcion_producto,
+                unidad_medida_producto,
+                indicador_producto,
+                unidad_medida_indicador_producto
+              )
             `)
             .eq('id', pf.meta_id)
             .single();
 
-                              if (metaData) {
+          if (metaError) {
+            console.error(`❌ Error obteniendo meta ${pf.meta_id}:`, metaError.message);
+            continue;
+          }
+
+          if (metaData) {
+            console.log(`✅ Meta encontrada: ${metaData.nombre} (ID: ${metaData.id})`);
             // Obtener programación física correspondiente
             const pfis = datosPoai?.programacion_fisica?.find(p => p.meta_id === pf.meta_id);
 
@@ -550,53 +462,109 @@ export class ReportesPoaiService {
               return true; // Por ahora incluir todos
             }) || [];
 
-            for (const proyecto of proyectos) {
+            // Si no hay proyectos, crear una fila con solo la meta
+            if (proyectos.length === 0) {
               const rowData = {
                 'N° Meta': rowNumber++,
-                'Meta de Producto': metaData.nombre || '',
-                'Dependencia Responsable': (metaData.area as any)?.nombre || '',
-                'Código del Producto': metaData.codigo_producto || '',
-                'Eje PMD': '',
-                'Programa PMD': metaData.codigo_programa || '',
-                'BPIN Proyecto': proyecto.codigo_bpin || '',
-                'Proyecto': proyecto.nombre || '',
-                'Pr. Vigencia 2024': '',
-                'Orientación de la Meta': metaData.orientacion || '',
-                'Indicador de Producto': '',
-                'Actividad': '',
-                'Evidencia/Entregable': '',
-                'Recursos Financieros': periodo === 1 ? pf.periodo_uno || 0 :
-                                      periodo === 2 ? pf.periodo_dos || 0 :
-                                      periodo === 3 ? pf.periodo_tres || 0 :
-                                      periodo === 4 ? pf.periodo_cuatro || 0 : 0,
-                'Recursos Físicos': periodo === 1 ? pfis?.periodo_uno || 0 :
-                                   periodo === 2 ? pfis?.periodo_dos || 0 :
-                                   periodo === 3 ? pfis?.periodo_tres || 0 :
-                                   periodo === 4 ? pfis?.periodo_cuatro || 0 : 0,
-                'Recursos Humanos': '',
-                'Recursos Tecnológicos': '',
-                'Fecha de Inicio': ''
+                'Dependencia Líder': (metaData.area as any)?.nombre || '',
+                'Eje Plan Municipal de Desarrollo 2024 - 2028': '', // Campo vacío por ahora
+                'Cod. Sector MGA': metaData.codigo_sector || '',
+                'Cod. Programa MGA': metaData.codigo_programa || '',
+                'ODS': (metaData.ods as any)?.nombre || '',
+                'Cod. Producto MGA': metaData.codigo_producto || '',
+                'Producto PMD': metaData.nombre || '',
+                'Indicador Producto MGA': '', // Campo vacío como solicitado
+                'Nombre Indicador': metaData.nombre_indicador || '',
+                'Codigo BPIN': '',
+                'Nombre del Proyecto': '',
+                'Unidad de Medida MGA': (metaData.caracterizacion_mga as any)?.unidad_medida_indicador_producto || '',
+                'Unidad de Medida': metaData.unidad_medida || '',
+                'Meta 2028': metaData.meta_numerica || '',
+                'Pr {periodo ejecutado}': periodo === 1 ? pf.periodo_uno || 0 :
+                                         periodo === 2 ? pf.periodo_dos || 0 :
+                                         periodo === 3 ? pf.periodo_tres || 0 :
+                                         periodo === 4 ? pf.periodo_cuatro || 0 : 0,
+                'Pr {periodo seleccionado}': periodo === 1 ? pfis?.periodo_uno || 0 :
+                                            periodo === 2 ? pfis?.periodo_dos || 0 :
+                                            periodo === 3 ? pfis?.periodo_tres || 0 :
+                                            periodo === 4 ? pfis?.periodo_cuatro || 0 : 0,
+                'Total {periodo}': periodo === 1 ? pf.periodo_uno || 0 :
+                                   periodo === 2 ? pf.periodo_dos || 0 :
+                                   periodo === 3 ? pf.periodo_tres || 0 :
+                                   periodo === 4 ? pf.periodo_cuatro || 0 : 0
               };
 
-                            data.push(rowData);
+              data.push(rowData);
+            } else {
+              // Crear fila por cada proyecto
+              for (const proyecto of proyectos) {
+                const rowData = {
+                  'N° Meta': rowNumber++,
+                  'Dependencia Líder': (metaData.area as any)?.nombre || '',
+                  'Eje Plan Municipal de Desarrollo 2024 - 2028': '', // Campo vacío por ahora
+                  'Cod. Sector MGA': metaData.codigo_sector || '',
+                  'Cod. Programa MGA': metaData.codigo_programa || '',
+                  'ODS': (metaData.ods as any)?.nombre || '',
+                  'Cod. Producto MGA': metaData.codigo_producto || '',
+                  'Producto PMD': metaData.nombre || '',
+                  'Indicador Producto MGA': '', // Campo vacío como solicitado
+                  'Nombre Indicador': metaData.nombre_indicador || '',
+                  'Codigo BPIN': proyecto.codigo_bpin || '',
+                  'Nombre del Proyecto': proyecto.nombre || '',
+                  'Unidad de Medida MGA': (metaData.caracterizacion_mga as any)?.unidad_medida_indicador_producto || '',
+                  'Unidad de Medida': metaData.unidad_medida || '',
+                  'Meta 2028': metaData.meta_numerica || '',
+                  'Pr {periodo ejecutado}': periodo === 1 ? pf.periodo_uno || 0 :
+                                           periodo === 2 ? pf.periodo_dos || 0 :
+                                           periodo === 3 ? pf.periodo_tres || 0 :
+                                           periodo === 4 ? pf.periodo_cuatro || 0 : 0,
+                  'Pr {periodo seleccionado}': periodo === 1 ? pfis?.periodo_uno || 0 :
+                                              periodo === 2 ? pfis?.periodo_dos || 0 :
+                                              periodo === 3 ? pfis?.periodo_tres || 0 :
+                                              periodo === 4 ? pfis?.periodo_cuatro || 0 : 0,
+                  'Total {periodo}': periodo === 1 ? pf.periodo_uno || 0 :
+                                     periodo === 2 ? pf.periodo_dos || 0 :
+                                     periodo === 3 ? pf.periodo_tres || 0 :
+                                     periodo === 4 ? pf.periodo_cuatro || 0 : 0
+                };
+
+                data.push(rowData);
+              }
             }
           }
         }
+      } else {
+        console.warn(`⚠️ No hay programación financiera en el historial ${historialId}`);
       }
 
       console.log(`📊 Datos generados: ${data.length} filas`);
+      if (data.length > 0) {
+        console.log(`📊 Primera fila de ejemplo:`, data[0]);
+      }
 
-      // Crear Excel (mismo código que arriba)
+      // Crear Excel con los nuevos headers
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Reporte POAI');
 
       const headers = [
-        'N° Meta', 'Meta de Producto', 'Dependencia Responsable',
-        'Código del Producto', 'Eje PMD', 'Programa PMD',
-        'BPIN Proyecto', 'Proyecto', 'Pr. Vigencia 2024',
-        'Orientación de la Meta', 'Indicador de Producto', 'Actividad',
-        'Evidencia/Entregable', 'Recursos Financieros', 'Recursos Físicos',
-        'Recursos Humanos', 'Recursos Tecnológicos', 'Fecha de Inicio'
+        'N° Meta',
+        'Dependencia Líder',
+        'Eje Plan Municipal de Desarrollo 2024 - 2028',
+        'Cod. Sector MGA',
+        'Cod. Programa MGA',
+        'ODS',
+        'Cod. Producto MGA',
+        'Producto PMD',
+        'Indicador Producto MGA',
+        'Nombre Indicador',
+        'Codigo BPIN',
+        'Nombre del Proyecto',
+        'Unidad de Medida MGA',
+        'Unidad de Medida',
+        'Meta 2028',
+        'Pr {periodo ejecutado}',
+        'Pr {periodo seleccionado}',
+        'Total {periodo}'
       ];
 
       const headerRow = worksheet.addRow(headers);
