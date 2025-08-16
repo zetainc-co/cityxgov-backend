@@ -373,7 +373,7 @@ export class ReportesPoaiService {
 
       // Como la función RPC no existe, usar directamente el método que sí funciona
       console.log(`📊 Usando método directo para generar reporte`);
-      return await this.generarReportePoaiDirecto(historialId);
+        return await this.generarReportePoaiDirecto(historialId);
 
     } catch (error) {
       throw new Error(`Error generando reporte: ${error.message}`);
@@ -397,7 +397,16 @@ export class ReportesPoaiService {
       const periodo = (historialData.poai as any)?.periodo;
       const datosPoai = historialData.datos_poai;
 
-      console.log(`📊 Procesando historial ${historialId}, periodo: ${periodo}`);
+      // Mapear período a año
+      const mapeoPeriodos = {
+        1: 2024,
+        2: 2025,
+        3: 2026,
+        4: 2027
+      };
+      const año = mapeoPeriodos[periodo] || 'N/A';
+
+      console.log(`📊 Procesando historial ${historialId}, periodo: ${periodo}, año: ${año}`);
       console.log(`📊 Datos POAI disponibles:`, {
         hasProgramacionFinanciera: !!datosPoai?.programacion_financiera,
         hasProgramacionFisica: !!datosPoai?.programacion_fisica,
@@ -417,7 +426,7 @@ export class ReportesPoaiService {
         for (const pf of datosPoai.programacion_financiera) {
           console.log(`📊 Procesando meta_id: ${pf.meta_id}`);
 
-          // Obtener meta de producto con todas sus relaciones
+          // Obtener meta de producto con todas sus relaciones incluyendo línea estratégica
           const { data: metaData, error: metaError } = await this.supabaseService.clientAdmin
             .from('meta_producto')
             .select(`
@@ -446,12 +455,44 @@ export class ReportesPoaiService {
             .eq('id', pf.meta_id)
             .single();
 
+                    // Obtener línea estratégica asociada a la meta de producto
+          let lineaEstrategica = '';
+          if (metaData) {
+            try {
+              // Buscar la línea estratégica a través de la relación meta_resultado_producto
+              const { data: lineaData } = await this.supabaseService.clientAdmin
+                .from('metas_resultado_producto')
+                .select(`
+                  meta_resultado_id
+                `)
+                .eq('meta_producto_id', metaData.id)
+                .limit(1)
+                .maybeSingle();
+
+              if (lineaData?.meta_resultado_id) {
+                const { data: metaResultadoData } = await this.supabaseService.clientAdmin
+                  .from('meta_resultado')
+                  .select(`
+                    linea_estrategica:linea_estrategica(nombre)
+                  `)
+                  .eq('id', lineaData.meta_resultado_id)
+                  .maybeSingle();
+
+                if (metaResultadoData?.linea_estrategica) {
+                  lineaEstrategica = (metaResultadoData.linea_estrategica as any)?.nombre || '';
+                }
+              }
+            } catch (error) {
+              console.log(`ℹ️ No se pudo obtener línea estratégica para meta ${metaData.id}`);
+            }
+          }
+
           if (metaError) {
             console.error(`❌ Error obteniendo meta ${pf.meta_id}:`, metaError.message);
             continue;
           }
 
-          if (metaData) {
+                              if (metaData) {
             console.log(`✅ Meta encontrada: ${metaData.nombre} (ID: ${metaData.id})`);
             // Obtener programación física correspondiente
             const pfis = datosPoai?.programacion_fisica?.find(p => p.meta_id === pf.meta_id);
@@ -467,65 +508,57 @@ export class ReportesPoaiService {
               const rowData = {
                 'N° Meta': rowNumber++,
                 'Dependencia Líder': (metaData.area as any)?.nombre || '',
-                'Eje Plan Municipal de Desarrollo 2024 - 2028': '', // Campo vacío por ahora
+                'Eje Plan Municipal de Desarrollo 2024 - 2028': lineaEstrategica || '',
                 'Cod. Sector MGA': metaData.codigo_sector || '',
                 'Cod. Programa MGA': metaData.codigo_programa || '',
                 'ODS': (metaData.ods as any)?.nombre || '',
                 'Cod. Producto MGA': metaData.codigo_producto || '',
                 'Producto PMD': metaData.nombre || '',
-                'Indicador Producto MGA': '', // Campo vacío como solicitado
+                'Indicador Producto MGA': (metaData.caracterizacion_mga as any)?.indicador_producto || '',
                 'Nombre Indicador': metaData.nombre_indicador || '',
                 'Codigo BPIN': '',
                 'Nombre del Proyecto': '',
                 'Unidad de Medida MGA': (metaData.caracterizacion_mga as any)?.unidad_medida_indicador_producto || '',
                 'Unidad de Medida': metaData.unidad_medida || '',
                 'Meta 2028': metaData.meta_numerica || '',
-                'Pr {periodo ejecutado}': periodo === 1 ? pf.periodo_uno || 0 :
-                                         periodo === 2 ? pf.periodo_dos || 0 :
-                                         periodo === 3 ? pf.periodo_tres || 0 :
-                                         periodo === 4 ? pf.periodo_cuatro || 0 : 0,
-                'Pr {periodo seleccionado}': periodo === 1 ? pfis?.periodo_uno || 0 :
-                                            periodo === 2 ? pfis?.periodo_dos || 0 :
-                                            periodo === 3 ? pfis?.periodo_tres || 0 :
-                                            periodo === 4 ? pfis?.periodo_cuatro || 0 : 0,
-                'Total {periodo}': periodo === 1 ? pf.periodo_uno || 0 :
-                                   periodo === 2 ? pf.periodo_dos || 0 :
-                                   periodo === 3 ? pf.periodo_tres || 0 :
-                                   periodo === 4 ? pf.periodo_cuatro || 0 : 0
+                [`Pr ${año}`]: periodo === 1 ? pf.periodo_uno || 0 :
+                                      periodo === 2 ? pf.periodo_dos || 0 :
+                                      periodo === 3 ? pf.periodo_tres || 0 :
+                                      periodo === 4 ? pf.periodo_cuatro || 0 : 0,
+                [`Total ${año}`]: periodo === 1 ? pf.periodo_uno || 0 :
+                                  periodo === 2 ? pf.periodo_dos || 0 :
+                                  periodo === 3 ? pf.periodo_tres || 0 :
+                                  periodo === 4 ? pf.periodo_cuatro || 0 : 0
               };
 
-              data.push(rowData);
+                            data.push(rowData);
             } else {
               // Crear fila por cada proyecto
               for (const proyecto of proyectos) {
                 const rowData = {
                   'N° Meta': rowNumber++,
                   'Dependencia Líder': (metaData.area as any)?.nombre || '',
-                  'Eje Plan Municipal de Desarrollo 2024 - 2028': '', // Campo vacío por ahora
+                  'Eje Plan Municipal de Desarrollo 2024 - 2028': lineaEstrategica || '',
                   'Cod. Sector MGA': metaData.codigo_sector || '',
                   'Cod. Programa MGA': metaData.codigo_programa || '',
                   'ODS': (metaData.ods as any)?.nombre || '',
                   'Cod. Producto MGA': metaData.codigo_producto || '',
                   'Producto PMD': metaData.nombre || '',
-                  'Indicador Producto MGA': '', // Campo vacío como solicitado
+                  'Indicador Producto MGA': (metaData.caracterizacion_mga as any)?.indicador_producto || '',
                   'Nombre Indicador': metaData.nombre_indicador || '',
                   'Codigo BPIN': proyecto.codigo_bpin || '',
                   'Nombre del Proyecto': proyecto.nombre || '',
                   'Unidad de Medida MGA': (metaData.caracterizacion_mga as any)?.unidad_medida_indicador_producto || '',
                   'Unidad de Medida': metaData.unidad_medida || '',
                   'Meta 2028': metaData.meta_numerica || '',
-                  'Pr {periodo ejecutado}': periodo === 1 ? pf.periodo_uno || 0 :
-                                           periodo === 2 ? pf.periodo_dos || 0 :
-                                           periodo === 3 ? pf.periodo_tres || 0 :
-                                           periodo === 4 ? pf.periodo_cuatro || 0 : 0,
-                  'Pr {periodo seleccionado}': periodo === 1 ? pfis?.periodo_uno || 0 :
-                                              periodo === 2 ? pfis?.periodo_dos || 0 :
-                                              periodo === 3 ? pfis?.periodo_tres || 0 :
-                                              periodo === 4 ? pfis?.periodo_cuatro || 0 : 0,
-                  'Total {periodo}': periodo === 1 ? pf.periodo_uno || 0 :
-                                     periodo === 2 ? pf.periodo_dos || 0 :
-                                     periodo === 3 ? pf.periodo_tres || 0 :
-                                     periodo === 4 ? pf.periodo_cuatro || 0 : 0
+                  [`Pr ${año}`]: periodo === 1 ? pf.periodo_uno || 0 :
+                                 periodo === 2 ? pf.periodo_dos || 0 :
+                                 periodo === 3 ? pf.periodo_tres || 0 :
+                                 periodo === 4 ? pf.periodo_cuatro || 0 : 0,
+                  [`Total ${año}`]: periodo === 1 ? pf.periodo_uno || 0 :
+                                    periodo === 2 ? pf.periodo_dos || 0 :
+                                    periodo === 3 ? pf.periodo_tres || 0 :
+                                    periodo === 4 ? pf.periodo_cuatro || 0 : 0
                 };
 
                 data.push(rowData);
@@ -546,6 +579,7 @@ export class ReportesPoaiService {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Reporte POAI');
 
+      // Crear headers simples (solo un nivel)
       const headers = [
         'N° Meta',
         'Dependencia Líder',
@@ -562,27 +596,136 @@ export class ReportesPoaiService {
         'Unidad de Medida MGA',
         'Unidad de Medida',
         'Meta 2028',
-        'Pr {periodo ejecutado}',
-        'Pr {periodo seleccionado}',
-        'Total {periodo}'
+        `Pr ${año}`,
+        `Total ${año}`
       ];
 
+      // Agregar título principal en la primera fila
+      const tituloPrincipal = `Reporte de Plan Operativo Manual de inversiones periodo ${año}`;
+      const tituloRow = worksheet.addRow([tituloPrincipal]);
+
+      // Formatear título principal - fondo blanco y letra negra
+      tituloRow.font = { bold: true, size: 18, color: { argb: 'FF000000' } }; // Letra negra
+      tituloRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFFFFF' } // Fondo blanco
+      };
+
+      // Centrar el título
+      tituloRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // Aplicar bordes negros al título principal
+      tituloRow.eachCell((cell, colNumber) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+      });
+
+      // Combinar solo hasta donde hay datos reales
+      const lastDataColumn = String.fromCharCode(65 + headers.length - 1); // 65 = 'A', calcular la última columna
+      worksheet.mergeCells(`A1:${lastDataColumn}2`);
+
+      // Agregar headers en la fila 3 (después del título)
       const headerRow = worksheet.addRow(headers);
-      headerRow.font = { bold: true };
+      headerRow.font = { bold: true, size: 12 };
       headerRow.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' }
+        fgColor: { argb: 'FFF2CC' } // Amarillo claro para los headers
       };
+      headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
+      // Aplicar bordes negros a los headers y limitar el color solo hasta donde hay datos
+      const totalColumns = headers.length;
+      headerRow.eachCell((cell, colNumber) => {
+        // Solo aplicar color amarillo hasta donde hay datos
+        if (colNumber <= totalColumns) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF2CC' } // Amarillo claro para los headers
+          };
+        }
+
+        // Aplicar bordes negros a todos los headers
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF000000' } }
+        };
+      });
+
+      // Agregar datos con formato optimizado para texto largo
       data.forEach(row => {
         const rowData = headers.map(header => row[header] || '');
-        worksheet.addRow(rowData);
+        const dataRow = worksheet.addRow(rowData);
+
+        // Configurar cada celda para mejor legibilidad
+        dataRow.eachCell((cell, colNumber) => {
+          // Habilitar wrap text para todas las celdas
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: 'left',
+            wrapText: true
+          };
+
+          // Configurar altura de fila para que se ajuste al contenido
+          dataRow.height = 30; // Altura base más generosa para mejor legibilidad
+
+          // Aplicar bordes negros a todas las celdas de datos
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF000000' } },
+            left: { style: 'thin', color: { argb: 'FF000000' } },
+            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+            right: { style: 'thin', color: { argb: 'FF000000' } }
+          };
+        });
+
+        // Configurar altura de fila automática basada en el contenido
+        let maxLines = 1;
+        headers.forEach((header, index) => {
+          const cellValue = row[header] || '';
+          if (cellValue && typeof cellValue === 'string') {
+            const estimatedLines = Math.ceil(cellValue.length / 50); // Estimación de líneas
+            maxLines = Math.max(maxLines, estimatedLines);
+          }
+        });
+
+        // Ajustar altura de fila basada en el contenido
+        dataRow.height = Math.max(30, maxLines * 15); // Mínimo 30px, ajuste por contenido
       });
 
-      worksheet.columns.forEach(column => {
-        column.width = 15;
+      // Configurar ancho de columnas con más espacio para mejor legibilidad
+      worksheet.columns.forEach((column, index) => {
+        if (index === 0) column.width = 10;       // N° Meta
+        else if (index === 1) column.width = 30;   // Dependencia Líder
+        else if (index === 2) column.width = 50;   // Eje Plan Municipal (mucho más ancho para texto largo)
+        else if (index === 3) column.width = 25;   // Cod. Sector MGA
+        else if (index === 4) column.width = 35;   // Cod. Programa MGA (más ancho para descripciones)
+        else if (index === 5) column.width = 25;   // ODS
+        else if (index === 6) column.width = 30;   // Cod. Producto MGA
+        else if (index === 7) column.width = 45;   // Producto PMD (mucho más ancho para nombres largos)
+        else if (index === 8) column.width = 35;   // Indicador Producto MGA
+        else if (index === 9) column.width = 40;   // Nombre Indicador (más ancho para descripciones largas)
+        else if (index === 10) column.width = 25;  // Codigo BPIN
+        else if (index === 11) column.width = 40;  // Nombre del Proyecto (más ancho para nombres largos)
+        else if (index === 12) column.width = 30;  // Unidad de Medida MGA
+        else if (index === 13) column.width = 25;  // Unidad de Medida
+        else if (index === 14) column.width = 20;  // Meta 2028
+        else if (index === 15) column.width = 25;  // Pr 2025
+        else if (index === 16) column.width = 25;  // Total 2025
+        else column.width = 25;
       });
+
+      // Configurar altura de filas para mejor espaciado
+      worksheet.getRow(1).height = 30;  // Título principal
+      worksheet.getRow(2).height = 30;  // Título principal (continuación)
+      worksheet.getRow(3).height = 25;  // Headers
 
       const buffer = await workbook.xlsx.writeBuffer();
       return Buffer.from(buffer);
