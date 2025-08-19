@@ -211,7 +211,6 @@ cityxgov-backend/
 └── README.md                   # Este archivo
 ```
 
-
 ### 📂 Descripción de Módulos
 
 ## 🔐 Módulo de Usuarios
@@ -232,22 +231,13 @@ Planificación estratégica y seguimiento de metas institucionales.
 
 ## 📚 Módulo de Catálogo
 Catálogos maestros y referencias del sistema.
-<<<<<<< develop
 
 - **`mga/`** - Metodología General Ajustada para proyectos de inversión
 - **`ods/`** - Objetivos de Desarrollo Sostenible y alineación de proyectos
 - **`fuentes_financiacion/`** - Catálogo de fuentes de recursos y financiación
 - **`financiacion_periodo/`** - Gestión de períodos fiscales y vigencias
 - **`enfoque_poblacional/`** - Catalogación de grupos poblacionales objetivo
-=======
->>>>>>> master
 
-- **`mga/`** - Metodología General Ajustada para proyectos de inversión
-- **`ods/`** - Objetivos de Desarrollo Sostenible y alineación de proyectos
-- **`fuentes_financiacion/`** - Catálogo de fuentes de recursos y financiación
-- **`financiacion_periodo/`** - Gestión de períodos fiscales y vigencias
-- **`enfoque_poblacional/`** - Catalogación de grupos poblacionales objetivo
-  
 ## ⚙️ Configuración del Proyecto
 
 ### Prerrequisitos
@@ -348,15 +338,6 @@ docker compose down -v
 # Reconstruir desde cero
 docker compose build --no-cache
 ```
-
-### Características de Docker
-
-- **Multi-stage build** para optimizar tamaño de imagen de producción
-- **Alpine Linux** para imágenes más pequeñas y seguras
-- **Usuario no-root** para mayor seguridad
-- **Healthchecks** para monitoreo de aplicación
-- **Hot reload** en desarrollo con volúmenes
-- **Variables de entorno** configurables
 
 ## 🚀 Despliegue
 
